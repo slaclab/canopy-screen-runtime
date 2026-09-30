@@ -12,7 +12,8 @@
 //     savedValuePv's value, or without one the value at connect time. EDM's
 //     S and R keys (save / restore) are not reproduced;
 //   - nothing is drawn until the PV connects (a 1-px box in the disconnected
-//     colour after 2 s); bgAlarm colours the frame.
+//     colour after 2 s); bgAlarm colours the frame, the scale's margin and
+//     the thumb (EDM sets the scale's background), not the trough or bevels.
 // The scale itself is a Motif widget in EDM, so its trough, bevels and 30-px
 // thumb are drawn here from Motif's default look, not from EDM code.
 // Written from that behaviour; no EDM code is copied.
@@ -120,7 +121,6 @@ export function MotifSlider({ obj }: EdmWidgetProps) {
     data: pv,
     alarmSensitive: propBool(p, 'bgAlarm'),
   });
-  const bgStatic = palette.spec(colorSpec(p, 'bgColor'));
   const fg = palette.spec(colorSpec(p, 'fgColor'));
   const tx = x + scaleX + 2;
   const ty = y + scaleY + 2;
@@ -164,7 +164,7 @@ export function MotifSlider({ obj }: EdmWidgetProps) {
           text={s}
           x={x + left}
           y={y + top + font.ascent}
-          fill={inverse ? bgStatic : fg}
+          fill={inverse ? bg : fg}
         />
       </>
     );
@@ -216,10 +216,10 @@ export function MotifSlider({ obj }: EdmWidgetProps) {
             ? text(savedText, idiv(2 * w, 3), labelH, 'center', true)
             : text(savedText, scaleX, mid2, 'end', true)
           : null}
-        <rect x={x + scaleX} y={y + scaleY} width={scaleW} height={scaleH} fill={bgStatic} />
+        <rect x={x + scaleX} y={y + scaleY} width={scaleW} height={scaleH} fill={bg} />
         {bevel(tx, ty, tw, th, bs, ts)}
         <rect x={ix} y={iy} width={Math.max(0, iw)} height={Math.max(0, ih)} fill={trough} />
-        <rect x={thumb.x} y={thumb.y} width={thumb.w} height={thumb.h} fill={bgStatic} />
+        <rect x={thumb.x} y={thumb.y} width={thumb.w} height={thumb.h} fill={bg} />
         {bevel(thumb.x, thumb.y, thumb.w, thumb.h, ts, bs)}
         {horizontal ? (
           <>

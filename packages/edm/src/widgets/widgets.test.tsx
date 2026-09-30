@@ -208,7 +208,7 @@ describe('exit, shell command, message button, button', () => {
     expect(document.querySelector('svg')).toBeNull();
     act(() => vi.advanceTimersByTime(2100));
     // the unconnected look: a 1-px outline in the disconnected colour
-    expect(document.querySelector('svg rect')?.getAttribute('stroke')).toBe('#ffffff');
+    expect(document.querySelector('svg path')?.getAttribute('fill')).toBe('#ffffff');
   });
 });
 
@@ -258,7 +258,7 @@ describe('connection phase', () => {
     act(() => vi.advanceTimersByTime(1900));
     expect(document.querySelector('svg')).toBeNull();
     act(() => vi.advanceTimersByTime(200));
-    expect(document.querySelector('svg rect')?.getAttribute('stroke')).toBe('#ffffff');
+    expect(document.querySelector('svg path')?.getAttribute('fill')).toBe('#ffffff');
     set('A', pv({ num: 1 }));
     expect(fills()).toContain('#00ff00');
     // once initialised, a drop repaints the shape in the disconnected colour
@@ -396,6 +396,13 @@ describe('related display', () => {
 });
 
 describe('graphics', () => {
+  it('rectangle: a zero-height outline is the line X draws', () => {
+    show(
+      'object activeRectangleClass\nbeginObjectProperties\nx 10\ny 20\nw 80\nh 0\nlineColor index 14\nendObjectProperties\n'
+    );
+    expect(document.querySelector('svg path')?.getAttribute('d')).toBe('M10 20H91V21H10Z');
+  });
+
   it('static text: autoSize keeps the centre of the box sized to the raw string', () => {
     show(
       obj(

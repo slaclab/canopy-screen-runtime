@@ -276,7 +276,9 @@ export function XRectOutline({
   dash?: boolean;
 }) {
   if (!color) return null;
-  if (lineWidth <= 1) {
+  // A solid outline is painted as a ring of whole pixels, which also covers
+  // the degenerate w = 0 or h = 0 rectangle X draws as a line.
+  if (lineWidth <= 1 && dash) {
     return (
       <rect
         x={x + 0.5}
@@ -286,12 +288,13 @@ export function XRectOutline({
         fill="none"
         stroke={color}
         strokeWidth={1}
-        strokeDasharray={dash ? '4 4' : undefined}
+        strokeDasharray="4 4"
       />
     );
   }
-  const lo = (c: number) => Math.ceil(c - lineWidth / 2);
-  const hi = (c: number) => Math.ceil(c + lineWidth / 2) - 1;
+  const lw = Math.max(1, lineWidth);
+  const lo = (c: number) => Math.ceil(c - lw / 2);
+  const hi = (c: number) => Math.ceil(c + lw / 2) - 1;
   const ox0 = lo(x);
   const oy0 = lo(y);
   const ox1 = hi(x + w) + 1;
@@ -309,7 +312,7 @@ export function XRectOutline({
         height={(oy1 + iy1) / 2 - (oy0 + iy0) / 2}
         fill="none"
         stroke={color}
-        strokeWidth={lineWidth}
+        strokeWidth={lw}
         strokeDasharray="4 4"
       />
     );
