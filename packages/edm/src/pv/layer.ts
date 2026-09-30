@@ -19,6 +19,7 @@ export const DISCONNECTED: EdmPvData = {
   enumChoices: [],
   lowerLimit: 0,
   upperLimit: 0,
+  writable: false,
 };
 
 export interface EdmPvSubscription {

@@ -20,6 +20,8 @@ export interface EdmPvData {
   readonly enumChoices: readonly string[];
   readonly lowerLimit: number;
   readonly upperLimit: number;
+  /** False when the channel refuses writes (EDM then shows its "no" cursor). */
+  readonly writable: boolean;
 }
 
 export type EdmPvListener = (data: EdmPvData) => void;

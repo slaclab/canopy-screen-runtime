@@ -54,5 +54,6 @@ function toEdm(d: PVData, meta: PVMetaDTO | undefined): EdmPvData {
     enumChoices: choices,
     lowerLimit: d.lowerLimit,
     upperLimit: d.upperLimit,
+    writable: meta?.writable ?? true,
   };
 }

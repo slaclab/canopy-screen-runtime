@@ -1,48 +1,71 @@
-// EDM local PVs (`LOC\name=type:init`, locPv plugin): in-browser variables
-// scoped to one screen (window). Types: d(ouble), i(nteger), s(tring),
-// e(num: `e:<index>,<choice0>,<choice1>,…`). The first declaration wins; a
-// bare reference (`LOC\name`) before any declaration reads as a double 0.
+// EDM local PVs (LOC\ plugin): in-browser variables shared by name within one
+// screen. Behaviour matches EDM's locPv plugin (locPv/loc_pv_factory.cc);
+// written from that behaviour, no EDM code copied.
+//
+//   LOC\name               a reference; invalid (disconnected) until some
+//                          reference initialises the name
+//   LOC\name=t:value       t = d (double), i (integer), s (text),
+//                          e (enum: `e:index,label0,label1,…`)
+//
+// The initialiser is positional, as in EDM: its first character is the type,
+// the second is skipped whatever it is, the rest is the initial text. So
+// `=i:0` and `=i,0` are integer 0, while `=0` or `=1` are *text* PVs with an
+// empty value (numerically 0) — a quirk screens rely on. The first
+// initialiser of a name wins. The value is one text buffer (63 chars) read as
+// a number by its numeric prefix. Precision 4, limits -100..100.
+//
+// EDM keeps LOC PVs in one process-wide pool and screens make names private
+// with the $(!W) macro; here the pool is one screen (browser window).
 
 import { AlarmSeverity } from '@slaclab/canopy-client';
-import type { EdmPvConnection, EdmPvData, EdmPvListener } from './types.js';
+import { cFormat } from '../format.js';
+import type { EdmPvConnection, EdmPvData, EdmPvListener, EdmPvType } from './types.js';
 
 interface Entry {
   data: EdmPvData;
-  declared: boolean;
+  valid: boolean;
   readonly listeners: Set<EdmPvListener>;
 }
 
-const BASE: EdmPvData = {
-  connected: true,
-  type: 'double',
+const INVALID: EdmPvData = {
+  connected: false,
+  type: 'string',
   num: 0,
   text: '',
-  severity: AlarmSeverity.NO_ALARM,
+  severity: AlarmSeverity.DISCONNECTED,
   units: '',
-  precision: null,
+  precision: 4,
   enumChoices: [],
-  lowerLimit: 0,
-  upperLimit: 0,
+  lowerLimit: -100,
+  upperLimit: 100,
+  writable: true,
 };
 
-export function parseLocDeclaration(decl: string): EdmPvData {
-  const m = /^\s*([dise])\s*:(.*)$/is.exec(decl);
-  if (!m) {
-    const n = Number(decl);
-    return Number.isFinite(n) && decl.trim() !== ''
-      ? { ...BASE, num: n, text: decl.trim() }
-      : { ...BASE, type: 'string', text: decl };
+const numericPrefix = (s: string) => {
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? n : 0;
+};
+
+function withBuffer(d: EdmPvData, buffer: string): EdmPvData {
+  const num = numericPrefix(buffer);
+  if (d.type === 'enum') {
+    const i = Math.trunc(num);
+    return { ...d, num: i, text: d.enumChoices[i] ?? '' };
   }
-  const t = m[1].toLowerCase();
-  const rest = m[2];
-  if (t === 's') return { ...BASE, type: 'string', text: rest };
-  if (t === 'e') {
-    const [idx, ...choices] = rest.split(',');
-    const num = Number(idx) || 0;
-    return { ...BASE, type: 'enum', num, text: choices[num] ?? '', enumChoices: choices };
-  }
-  const num = Number(rest) || 0;
-  return { ...BASE, type: t === 'i' ? 'integer' : 'double', num, text: String(num) };
+  return { ...d, num: d.type === 'integer' ? Math.trunc(num) : num, text: buffer };
+}
+
+/** The PV an initialiser (the text after `=`) declares. */
+export function parseLocDeclaration(attr: string): EdmPvData {
+  const letter = attr[0] ?? '';
+  const rest = attr.slice(2, 65);
+  const base: EdmPvData = { ...INVALID, connected: true, severity: AlarmSeverity.NO_ALARM };
+  const type: EdmPvType =
+    letter === 'd' ? 'double' : letter === 'i' ? 'integer' : letter === 'e' ? 'enum' : 'string';
+  if (type !== 'enum') return withBuffer({ ...base, type }, rest);
+  const pieces = rest.split(/[,;]/).filter((s) => s !== '');
+  if (pieces.length === 0) return withBuffer({ ...base, type, enumChoices: ['0', '1'] }, '0');
+  return withBuffer({ ...base, type, enumChoices: pieces.slice(1, 17) }, pieces[0]);
 }
 
 export interface LocalConnection extends EdmPvConnection {
@@ -54,23 +77,24 @@ export function localConnection(): LocalConnection {
   const entry = (name: string): Entry => {
     let e = pvs.get(name);
     if (!e) {
-      e = { data: BASE, declared: false, listeners: new Set() };
+      e = { data: INVALID, valid: false, listeners: new Set() };
       pvs.set(name, e);
     }
     return e;
   };
+  // name = text before the first `=` or `~`; consecutive separators collapse.
   const split = (s: string): [string, string | undefined] => {
-    const eq = s.indexOf('=');
-    return eq < 0 ? [s.trim(), undefined] : [s.slice(0, eq).trim(), s.slice(eq + 1)];
+    const m = /[=~]+/.exec(s);
+    return m ? [s.slice(0, m.index), s.slice(m.index + m[0].length)] : [s, undefined];
   };
   const emit = (e: Entry) => e.listeners.forEach((l) => l(e.data));
   return {
     subscribe(spec, listener) {
-      const [name, decl] = split(spec);
+      const [name, attr] = split(spec);
       const e = entry(name);
-      if (decl !== undefined && !e.declared) {
-        e.declared = true;
-        e.data = parseLocDeclaration(decl);
+      if (attr !== undefined && !e.valid) {
+        e.valid = true;
+        e.data = parseLocDeclaration(attr);
         emit(e);
       }
       e.listeners.add(listener);
@@ -80,16 +104,14 @@ export function localConnection(): LocalConnection {
     put(spec, value) {
       const [name] = split(spec);
       const e = entry(name);
-      const d = e.data;
-      if (d.type === 'string') e.data = { ...d, text: String(value) };
-      else {
-        const num = typeof value === 'number' ? value : Number(value) || 0;
-        e.data = {
-          ...d,
-          num: d.type === 'integer' || d.type === 'enum' ? Math.trunc(num) : num,
-          text: d.type === 'enum' ? (d.enumChoices[Math.trunc(num)] ?? '') : String(num),
-        };
-      }
+      // A put does not make an uninitialised PV valid, but its buffer changes.
+      const buffer =
+        typeof value === 'number'
+          ? Number.isInteger(value)
+            ? String(value)
+            : cFormat('%.15g', value)
+          : value.slice(0, 63);
+      e.data = withBuffer(e.data, buffer);
       emit(e);
     },
     clear() {

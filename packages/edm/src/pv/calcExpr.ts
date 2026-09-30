@@ -1,22 +1,26 @@
-// EPICS calc expressions: infix → postfix compile, and evaluation.
+// EPICS calc expressions as EDM's CALC\ PVs evaluate them: infix → postfix
+// compile, and evaluation.
 //
-// A TypeScript port of EPICS base (R7.0.10) libcom/src/calc/postfix.c and
-// calcPerform.c, which EDM's CALC\ PVs evaluate with:
-//   Copyright (c) 2010 UChicago Argonne LLC, as Operator of Argonne National
-//   Laboratory. Copyright (c) 2002 The Regents of the University of
-//   California, as Operator of Los Alamos National Laboratory. EPICS BASE is
-//   distributed subject to the EPICS Open License.
+// EDM does not call EPICS base: its calcPv plugin carries its own copy of
+// base's postfix.c / calcPerform.c from the 3.14 era (edm/calcPv, functions
+// edm_postfix / edm_calcPerform). This is a TypeScript port of that copy:
+//   Copyright (c) 2002 The University of Chicago, as Operator of Argonne
+//   National Laboratory. Copyright (c) 2002 The Regents of the University of
+//   California, as Operator of Los Alamos National Laboratory. EPICS BASE
+//   Versions 3.13.7 and higher are distributed subject to the EPICS Open
+//   License.
 //
-// Same element tables and priorities, the same stack-depth checks and the
-// same arithmetic (int32 conversions for the bit operators, C remainder for
-// %, NINT rounding, the ATAN2 argument order). Never uses eval.
+// Same element tables and priorities, stack-depth checks and arithmetic. It
+// differs from today's EPICS base in ways screens depend on: variables A..L
+// only (no VAL), MAX and MIN take exactly two arguments (MAX(A,B,C) does not
+// compile, so such a CALC stays 0), FINITE/ISNAN are unary, % is fmod, and
+// there is no >>>. Never uses eval.
 
 type ElementType =
   | 'OPERAND'
   | 'LITERAL'
   | 'STORE'
   | 'UNARY'
-  | 'VARARG'
   | 'BINARY'
   | 'SEPARATOR'
   | 'CLOSE_PAREN'
@@ -41,8 +45,8 @@ const el = (
   code: string
 ): Element => ({ name, inStack, inComing, effect, type, code });
 
-const VARS = 'ABCDEFGHIJKLMNOPQRSTU';
-/** Number of input variables (A..U). */
+const VARS = 'ABCDEFGHIJKL';
+/** Number of input variables (A..L). */
 export const CALC_NARGS = VARS.length;
 const STACK = 80;
 
@@ -59,7 +63,6 @@ const OPERANDS: Element[] = [
   el('PI', 0, 0, 1, 'OPERAND', 'CONST_PI'),
   el('R2D', 0, 0, 1, 'OPERAND', 'CONST_R2D'),
   el('RNDM', 0, 0, 1, 'OPERAND', 'RANDOM'),
-  el('VAL', 0, 0, 1, 'OPERAND', 'FETCH_VAL'),
   ...(
     [
       ['ABS', 'ABS_VAL'],
@@ -70,8 +73,10 @@ const OPERANDS: Element[] = [
       ['COS', 'COS'],
       ['COSH', 'COSH'],
       ['EXP', 'EXP'],
+      ['FINITE', 'FINITE'],
       ['FLOOR', 'FLOOR'],
       ['ISINF', 'ISINF'],
+      ['ISNAN', 'ISNAN'],
       ['LN', 'LOG_E'],
       ['LOG', 'LOG_10'],
       ['LOGE', 'LOG_E'],
@@ -87,8 +92,8 @@ const OPERANDS: Element[] = [
     ] as const
   ).map(([n, c]) => el(n, 7, 8, 0, 'UNARY', c)),
   el('ATAN2', 7, 8, -1, 'UNARY', 'ATAN2'),
-  el('FMOD', 7, 8, -1, 'UNARY', 'FMOD'),
-  ...(['FINITE', 'ISNAN', 'MAX', 'MIN'] as const).map((n) => el(n, 7, 8, 0, 'VARARG', n)),
+  el('MAX', 7, 8, -1, 'UNARY', 'MAX'),
+  el('MIN', 7, 8, -1, 'UNARY', 'MIN'),
 ];
 
 const OPERATORS: Element[] = [
@@ -115,7 +120,6 @@ const OPERATORS: Element[] = [
   el('>', 3, 3, -1, 'BINARY', 'GR_THAN'),
   el('>=', 3, 3, -1, 'BINARY', 'GR_OR_EQ'),
   el('>>', 2, 2, -1, 'BINARY', 'RIGHT_SHIFT_ARITH'),
-  el('>>>', 2, 2, -1, 'BINARY', 'RIGHT_SHIFT_LOGIC'),
   el('?', 0, 0, -1, 'CONDITIONAL', 'COND_IF'),
   el('AND', 2, 2, -1, 'BINARY', 'BIT_AND'),
   el('OR', 1, 1, -1, 'BINARY', 'BIT_OR'),
@@ -130,7 +134,7 @@ const byLength = (a: Element, b: Element) => b.name.length - a.name.length;
 const OPERANDS_SORTED = [...OPERANDS].sort(byLength);
 const OPERATORS_SORTED = [...OPERATORS].sort(byLength);
 
-/** One postfix instruction; `n` is a literal value or a vararg count. */
+/** One postfix instruction; `n` is a literal's value. */
 export interface CalcOp {
   readonly code: string;
   readonly n?: number;
@@ -140,7 +144,8 @@ export type CalcProgram = readonly CalcOp[];
 
 export class CalcError extends Error {}
 
-const LITERAL = /^(?:(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?|inf(?:inity)?|nan)/i;
+// C strtod: hex, decimal with optional exponent, INF, NAN.
+const LITERAL = /^(?:0x[0-9a-f]+|(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?|inf(?:inity)?|nan)/i;
 
 /** postfix(): compile an infix expression. Throws CalcError on a bad expression. */
 export function compileCalc(expr: string): CalcProgram {
@@ -153,7 +158,7 @@ export function compileCalc(expr: string): CalcProgram {
   let condCount = 0;
 
   const emit = (top: { e: Element; code: string; effect: number }) => {
-    out.push(top.e.type === 'VARARG' ? { code: top.code, n: 1 - top.effect } : { code: top.code });
+    out.push({ code: top.code });
     depth += top.effect;
   };
   const popWhile = (test: (t: { e: Element }) => boolean) => {
@@ -182,7 +187,13 @@ export function compileCalc(expr: string): CalcProgram {
           const m = LITERAL.exec(at);
           if (!m) throw new CalcError('Bad numeric literal');
           const t = m[0].toLowerCase();
-          const v = t.startsWith('inf') ? Infinity : t === 'nan' ? NaN : Number(m[0]);
+          const v = t.startsWith('inf')
+            ? Infinity
+            : t === 'nan'
+              ? NaN
+              : t.startsWith('0x')
+                ? parseInt(t, 16)
+                : Number(m[0]);
           out.push({ code: 'LITERAL', n: v });
           src = at.slice(m[0].length);
         } else {
@@ -196,7 +207,7 @@ export function compileCalc(expr: string): CalcProgram {
       }
       case 'STORE': {
         const prev = out[out.length - 1];
-        if (!prev || stack.length || !/^FETCH_[A-U]$/.test(prev.code)) {
+        if (!prev || stack.length || !/^FETCH_[A-L]$/.test(prev.code)) {
           throw new CalcError('Bad assignment target');
         }
         out.pop();
@@ -206,7 +217,6 @@ export function compileCalc(expr: string): CalcProgram {
         break;
       }
       case 'UNARY':
-      case 'VARARG':
         popWhile((t) => t.e.inStack >= e.inComing);
         stack.push({ e, code: e.code, effect: e.effect });
         break;
@@ -222,7 +232,6 @@ export function compileCalc(expr: string): CalcProgram {
           emit(stack.pop()!);
         }
         operandNeeded = true;
-        stack[stack.length - 1].effect -= 1;
         break;
       case 'CLOSE_PAREN': {
         if (!stack.length) throw new CalcError('Close parenthesis found without open');
@@ -230,12 +239,7 @@ export function compileCalc(expr: string): CalcProgram {
           if (stack.length <= 1) throw new CalcError('Close parenthesis found without open');
           emit(stack.pop()!);
         }
-        const paren = stack.pop()!;
-        const below = stack[stack.length - 1];
-        if (below && below.e.type === 'VARARG') {
-          below.effect = paren.effect;
-          if (below.effect > 0) throw new CalcError('Incomplete expression');
-        }
+        stack.pop(); // the (
         break;
       }
       case 'CONDITIONAL':
@@ -274,9 +278,8 @@ export function compileCalc(expr: string): CalcProgram {
   return out.filter((o) => o.code !== 'PAREN');
 }
 
-const d2i = (x: number) => (x < 0 ? Math.trunc(x) | 0 : (Math.trunc(x) >>> 0) | 0);
-const d2ui = (x: number) => (x < 0 ? (Math.trunc(x) | 0) >>> 0 : Math.trunc(x) >>> 0);
-const i32 = (x: number) => (Number.isFinite(x) ? Math.trunc(x) | 0 : 0);
+/** C (int) cast of a double (out-of-range values are undefined in C; wrap here). */
+const d2i = (x: number) => (Number.isFinite(x) ? Math.trunc(x) | 0 : 0);
 
 /** cond_search(): index after the matching COND_ELSE / COND_END, or -1. */
 function condSearch(prog: CalcProgram, from: number, match: string): number {
@@ -290,17 +293,17 @@ function condSearch(prog: CalcProgram, from: number, match: string): number {
 }
 
 /**
- * calcPerform(): evaluate a compiled expression. `args` holds A..U (it is
- * written by `:=` stores), `prev` is VAL. Returns null when the program is
- * malformed at run time (EPICS returns -1).
+ * calcPerform(): evaluate a compiled expression. `args` holds A..L (it is
+ * written by `:=` stores). Returns null when the program is malformed at run
+ * time (EPICS returns -1).
  */
-export function performCalc(prog: CalcProgram, args: number[], prev = 0): number | null {
+export function performCalc(prog: CalcProgram, args: number[]): number | null {
   const st: number[] = [];
   let pc = 0;
   while (pc < prog.length) {
     const { code, n } = prog[pc++];
     if (code.startsWith('FETCH_')) {
-      st.push(code === 'FETCH_VAL' ? prev : (args[VARS.indexOf(code[6])] ?? 0));
+      st.push(args[VARS.indexOf(code[6])] ?? 0);
       continue;
     }
     if (code.startsWith('STORE_')) {
@@ -347,7 +350,7 @@ export function performCalc(prog: CalcProgram, args: number[], prev = 0): number
         bin((a, b) => a / b);
         break;
       case 'MODULO':
-        bin((a, b) => (i32(b) ? i32(a) % i32(b) : NaN));
+        bin((a, b) => a % b); // fmod
         break;
       case 'POWER':
         bin((a, b) => Math.pow(a, b));
@@ -365,15 +368,11 @@ export function performCalc(prog: CalcProgram, args: number[], prev = 0): number
         un(Math.log);
         break;
       case 'MAX':
-      case 'MIN': {
-        let count = n ?? 1;
-        while (--count > 0) {
-          const t = st.pop()!;
-          const cur = top();
-          if ((code === 'MAX' ? cur < t : cur > t) || Number.isNaN(t)) st[st.length - 1] = t;
-        }
+        bin((a, b) => (a < b || Number.isNaN(b) ? b : a));
         break;
-      }
+      case 'MIN':
+        bin((a, b) => (a > b || Number.isNaN(b) ? b : a));
+        break;
       case 'SQU_RT':
         un(Math.sqrt);
         break;
@@ -414,26 +413,17 @@ export function performCalc(prog: CalcProgram, args: number[], prev = 0): number
       case 'FLOOR':
         un(Math.floor);
         break;
-      case 'FMOD':
-        bin((a, b) => a % b);
-        break;
       case 'FINITE':
-      case 'ISNAN': {
-        let count = n ?? 1;
-        const test = (v: number) => (code === 'FINITE' ? Number.isFinite(v) : Number.isNaN(v));
-        let acc = test(st.pop()!);
-        while (--count > 0) {
-          const v = test(st.pop()!);
-          acc = code === 'FINITE' ? acc && v : acc || v;
-        }
-        st.push(acc ? 1 : 0);
+        un((v) => (Number.isFinite(v) ? 1 : 0));
         break;
-      }
+      case 'ISNAN':
+        un((v) => (Number.isNaN(v) ? 1 : 0));
+        break;
       case 'ISINF':
         un((a) => (Math.abs(a) === Infinity ? 1 : 0));
         break;
       case 'NINT':
-        un((a) => i32(a >= 0 ? a + 0.5 : a - 0.5));
+        un((a) => Math.trunc(a >= 0 ? a + 0.5 : a - 0.5));
         break;
       case 'REL_OR':
         bin((a, b) => (a || b ? 1 : 0));
@@ -457,13 +447,10 @@ export function performCalc(prog: CalcProgram, args: number[], prev = 0): number
         un((a) => ~d2i(a));
         break;
       case 'RIGHT_SHIFT_ARITH':
-        bin((a, b) => d2i(a) >> (d2i(b) & 31));
+        bin((a, b) => d2i(a) >> d2i(b));
         break;
       case 'LEFT_SHIFT_ARITH':
-        bin((a, b) => d2i(a) << (d2i(b) & 31));
-        break;
-      case 'RIGHT_SHIFT_LOGIC':
-        bin((a, b) => d2ui(a) >>> (d2ui(b) & 31));
+        bin((a, b) => d2i(a) << d2i(b));
         break;
       case 'NOT_EQ':
         bin((a, b) => (a !== b ? 1 : 0));
