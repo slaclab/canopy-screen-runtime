@@ -17,6 +17,10 @@
 //       [ -z "$spec" ] && continue; echo "### SPEC $spec";
 //       xlsfonts -lll -fn "$spec" 2>&1 | head -400; done' > xlsfonts.txt
 //   node scripts/gen-font-metrics.mjs xlsfonts.txt > src/config/xFontMetrics.generated.ts
+//   pnpm exec prettier --write src/config/xFontMetrics.generated.ts   # the committed form
+//
+// Regenerate when the site fonts.list names other XLFDs: the renderer takes
+// its font set from this table, not from fonts.list at run time.
 //
 // Tag naming follows edmlib/font_pkg.cc fontInfoClass::resolveFont: the first
 // font XListFonts returns for the pattern, as family-weight-slant-size with

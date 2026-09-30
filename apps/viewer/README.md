@@ -5,10 +5,11 @@ content: browse the screen manifest, deep-link into a screen, and run it live.
 
 ## Routes
 
-| Route              | Purpose                                                                |
-| ------------------ | ---------------------------------------------------------------------- |
-| `/`                | Browse/search the manifest (filter by title, category, or id)          |
-| `/s/:category/:id` | Render one IR screen; every `?NAME=value` query param is a macro value |
+| Route              | Purpose                                                                                         |
+| ------------------ | ----------------------------------------------------------------------------------------------- |
+| `/`                | Browse/search the manifest (filter by title, category, or id)                                   |
+| `/s/:category/:id` | Render one IR screen; every `?NAME=value` query param is a macro value                          |
+| `/edl/<path>`      | Render a legacy EDM `.edl` screen directly (`@slaclab/canopy-edm`); query params are EDM macros |
 
 `?render=edm|carbon` on a screen URL is reserved (not a macro): it selects the
 render mode for that page, overriding `VITE_RENDER_MODE`. `edm` presents
@@ -22,15 +23,23 @@ not match `@slaclab/canopy-screen-ir`'s `SCHEMA_VERSION` get an explicit
 error page — never a blank screen. Each screen renders inside its own error
 boundary, and each widget inside the screen has another one.
 
+`/edl/<path>` fetches `<path>` and `colors.list` from the display-file
+endpoint (`VITE_EDM_BASE_URL`), which searches the display tree the way EDM's
+`EDMDATAFILES` does. It renders the screen at its EDM size with EDM's look.
+`render`, `impl` and `look` are reserved and are never macros. EPICS PVs go
+through Hare, and `LOC\` locals are scoped to the window. Related displays
+open in a new tab.
+
 ## Configuration (`.env.local`)
 
-| Variable                | Default            | Meaning                                                                     |
-| ----------------------- | ------------------ | --------------------------------------------------------------------------- |
-| `VITE_SCREENS_BASE_URL` | `''` (same origin) | Base URL serving a canopy-screens checkout (`manifest.json` + `screens/**`) |
-| `VITE_PV_MODE`          | `mock`             | `mock` = simulated PVs, rules inert · `hare` = live Canopy                  |
-| `VITE_CANOPY_BASE_URL`  | —                  | Canopy API base (hare mode), e.g. `https://canopy.example.org`              |
-| `VITE_CANOPY_API_KEY`   | —                  | API key (hare mode)                                                         |
-| `VITE_RENDER_MODE`      | `edm`              | Default render mode: `edm` (legacy alarm/text presentation) · `carbon`      |
+| Variable                | Default            | Meaning                                                                                         |
+| ----------------------- | ------------------ | ----------------------------------------------------------------------------------------------- |
+| `VITE_SCREENS_BASE_URL` | `''` (same origin) | Base URL serving a canopy-screens checkout (`manifest.json` + `screens/**`)                     |
+| `VITE_PV_MODE`          | `mock`             | `mock` = simulated PVs, rules inert · `hare` = live Canopy                                      |
+| `VITE_CANOPY_BASE_URL`  | —                  | Canopy API base (hare mode), e.g. `https://canopy.example.org`                                  |
+| `VITE_CANOPY_API_KEY`   | —                  | API key (hare mode)                                                                             |
+| `VITE_RENDER_MODE`      | `edm`              | Default render mode: `edm` (legacy alarm/text presentation) · `carbon`                          |
+| `VITE_EDM_BASE_URL`     | `/displays/v1`     | Display-file endpoint behind `/edl/<path>` (`{base}/files/<path>`, `{base}/config/colors.list`) |
 
 `src/services.ts` is the composition root: `mock` builds a `MockPVService`
 (no Fox — rules stay at their base values), `hare` builds `HarePVService`
