@@ -1,0 +1,15 @@
+/* Web fonts standing in for EDM's X11 bitmap fonts (metric-compatible
+   Liberation clones of Helvetica, Times and Courier). Glyph positions come
+   from the X metrics bundled with the package, so only glyph shapes differ. */
+@import '@fontsource/arimo/400.css';
+@import '@fontsource/arimo/400-italic.css';
+@import '@fontsource/arimo/700.css';
+@import '@fontsource/arimo/700-italic.css';
+@import '@fontsource/tinos/400.css';
+@import '@fontsource/tinos/400-italic.css';
+@import '@fontsource/tinos/700.css';
+@import '@fontsource/tinos/700-italic.css';
+@import '@fontsource/cousine/400.css';
+@import '@fontsource/cousine/400-italic.css';
+@import '@fontsource/cousine/700.css';
+@import '@fontsource/cousine/700-italic.css';
