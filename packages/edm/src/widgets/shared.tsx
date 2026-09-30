@@ -154,6 +154,13 @@ export function alignOf(p: EdmProps): Align {
  */
 export const X_PIXEL = 0.5 - 1 / 32;
 
+/**
+ * EDM draws an object's "not connected" outline before it checks whether the
+ * object is enabled, so the outline shows even inside a hidden group. Groups
+ * hide their members with `visibility`, and this style opts the outline out.
+ */
+export const SHOWS_IN_HIDDEN_GROUP: CSSProperties = { visibility: 'visible' };
+
 /** C integer division (truncates toward zero). */
 export const idiv = (a: number, b: number) => Math.trunc(a / b);
 

@@ -41,6 +41,7 @@ import { Hotspot, PopupMenu } from './button.js';
 import type { EdmWidgetProps } from './registry.js';
 import { textupdateText } from './Textupdate.js';
 import {
+  SHOWS_IN_HIDDEN_GROUP,
   SvgBox,
   TextRun,
   XRectOutline,
@@ -193,7 +194,7 @@ export function makeTextDsp(cls: string) {
     if (phase !== 'init' || !pv) {
       // EDM's unconnected Text Control: a 2-px outline in the disconnected colour.
       return phase === 'unconnected' ? (
-        <SvgBox x={g.x - 2} y={g.y - 2} w={g.w + 5} h={g.h + 5}>
+        <SvgBox x={g.x - 2} y={g.y - 2} w={g.w + 5} h={g.h + 5} style={SHOWS_IN_HIDDEN_GROUP}>
           <XRectOutline {...g} lineWidth={2} color={palette.disconnected()} />
         </SvgBox>
       ) : null;

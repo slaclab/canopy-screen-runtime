@@ -23,6 +23,7 @@ import { XLines } from './button.js';
 import type { XLine } from './button.js';
 import type { EdmWidgetProps } from './registry.js';
 import {
+  SHOWS_IN_HIDDEN_GROUP,
   SvgBox,
   TextRun,
   XRectOutline,
@@ -89,7 +90,7 @@ export function Bar({ obj }: EdmWidgetProps) {
     if (phase === 'waiting') return null;
     // The unconnected box is clipped to w x h: only its top and left edges show.
     return (
-      <SvgBox x={x} y={y} w={w} h={h} clip>
+      <SvgBox x={x} y={y} w={w} h={h} clip style={SHOWS_IN_HIDDEN_GROUP}>
         <XRectOutline {...g} lineWidth={1} color={palette.disconnected()} />
       </SvgBox>
     );

@@ -6,6 +6,7 @@ import { propBool, propInt, propStr, propText } from '../model.js';
 import { useEdmPv, useEdmScreen, useExpanded, usePhase } from '../screen/context.js';
 import type { EdmWidgetProps } from './registry.js';
 import {
+  SHOWS_IN_HIDDEN_GROUP,
   SvgBox,
   TextRun,
   XRectOutline,
@@ -79,7 +80,7 @@ export function XText({ obj }: EdmWidgetProps) {
   const lt = Math.max(0, propInt(p, 'lineWidth', 1));
 
   return (
-    <SvgBox x={x} y={g.y} w={w} h={h} clip>
+    <SvgBox x={x} y={g.y} w={w} h={h} clip style={placeholder ? SHOWS_IN_HIDDEN_GROUP : undefined}>
       {!propBool(p, 'useDisplayBg') && !placeholder ? (
         <rect x={x} y={g.y} width={w} height={h} fill={bg} />
       ) : null}

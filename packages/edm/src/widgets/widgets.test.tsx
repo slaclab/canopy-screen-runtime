@@ -266,6 +266,25 @@ describe('connection phase', () => {
     expect(fills()).toContain('#ffffff');
     expect(fills()).not.toContain('#00ff00');
   });
+
+  it('shows the unconnected box of a member even when its group is hidden', () => {
+    vi.useFakeTimers();
+    show(
+      `object activeGroupClass\nbeginObjectProperties\nx 0\ny 0\nw 100\nh 100\n\nbeginGroup\n\n${obj(
+        'activeRectangleClass',
+        'lineColor index 14\nalarmPv "A"'
+      )}${obj('activeRectangleClass', 'lineColor index 14')}endGroup\n\nvisPv "G"\nvisMin "1"\nvisMax "2"\nendObjectProperties\n`,
+      { G: pv({ num: 0 }) }
+    );
+    act(() => vi.advanceTimersByTime(2100));
+    const group = document.querySelector<HTMLElement>('[data-edm-class="activeGroupClass"]')!;
+    expect(group.style.visibility).toBe('hidden');
+    // the member without PVs inherits the hidden state; the unconnected one opts out
+    expect([...group.querySelectorAll('svg')].map((e) => e.style.visibility)).toEqual([
+      'visible',
+      '',
+    ]);
+  });
 });
 
 describe('text control editing and null colour', () => {

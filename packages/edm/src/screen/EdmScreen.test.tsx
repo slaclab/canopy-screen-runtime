@@ -202,7 +202,7 @@ describe('EdmScreen', () => {
         .sort()
     ).toEqual(['TextupdateClass.controlPv', 'activeGroupClass.visPv']);
     const group = document.querySelector<HTMLElement>('[data-edm-class=activeGroupClass]')!;
-    expect(group.style.display).toBe('none');
+    expect(group.style.visibility).toBe('hidden');
   });
 
   it('records every subscription with its class and property, served or not', () => {

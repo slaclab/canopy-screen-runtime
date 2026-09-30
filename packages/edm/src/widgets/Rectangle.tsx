@@ -6,7 +6,16 @@
 import { propBool, propInt, propStr } from '../model.js';
 import { useEdmPv, useEdmScreen, usePhase } from '../screen/context.js';
 import type { EdmWidgetProps } from './registry.js';
-import { SvgBox, XRectOutline, colorSpec, edmColor, geom, pvProp, useVis } from './shared.js';
+import {
+  SHOWS_IN_HIDDEN_GROUP,
+  SvgBox,
+  XRectOutline,
+  colorSpec,
+  edmColor,
+  geom,
+  pvProp,
+  useVis,
+} from './shared.js';
 
 const CLS = 'activeRectangleClass';
 
@@ -71,7 +80,7 @@ export function Unconnected({
   color?: string;
 }) {
   return (
-    <SvgBox x={x - 1} y={y - 1} w={w + 3} h={h + 3}>
+    <SvgBox x={x - 1} y={y - 1} w={w + 3} h={h + 3} style={SHOWS_IN_HIDDEN_GROUP}>
       <XRectOutline x={x} y={y} w={w} h={h} lineWidth={1} color={color} />
     </SvgBox>
   );
