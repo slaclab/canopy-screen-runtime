@@ -60,10 +60,14 @@ The layout follows Diamond's cs-web-lib, so the package could move upstream late
   calculation.
 - **Number formatting** ports EPICS `cvtDoubleToString` and C `printf` semantics.
 
-One thing is deliberately not reproduced: when a dynamic object updates, EDM repaints
-the region 5 px around it with only the objects that intersect the object's own box,
-which erases the edges of close neighbours (a missing bevel row, a clipped alarm
-border) until the next full expose. The renderer draws every object whole.
+Two EDM behaviours are not reproduced:
+
+- **Partial repaints.** When a dynamic object updates, EDM repaints the region 5 px
+  around it with only the objects that intersect the object's own box, which erases
+  the edges of close neighbours (a missing bevel row, a clipped alarm border) until
+  the next full expose. The renderer draws every object whole.
+- **Blinking colours.** A colors.list static with two RGB triplets blinks in EDM every
+  `blinkms`. The palette parses both, but objects show the first.
 
 ## Implemented classes
 
