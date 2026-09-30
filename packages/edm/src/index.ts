@@ -34,12 +34,21 @@ export { EdmPvLayer, DISCONNECTED } from './pv/layer.js';
 export type { EdmPvSubscription } from './pv/layer.js';
 export { pvServiceConnection } from './pv/pvService.js';
 export { localConnection, parseLocDeclaration } from './pv/local.js';
+export { calcConnection, parseCalcList, parseCalcName } from './pv/calc.js';
+export { CalcError, compileCalc, performCalc } from './pv/calcExpr.js';
 export type { LocalConnection } from './pv/local.js';
 export type { EdmPvConnection, EdmPvData, EdmPvListener, EdmPvType } from './pv/types.js';
 export { EdmScreen, screenFonts, screenSize } from './screen/EdmScreen.js';
 export type { EdmScreenProps } from './screen/EdmScreen.js';
-export { EdmScreenContext, useEdmScreen, useEdmPv } from './screen/context.js';
-export type { EdmOpenDisplayRequest, EdmScreenEnv } from './screen/context.js';
+export {
+  EdmScreenContext,
+  useEdmScreen,
+  useEdmPv,
+  useEdmPut,
+  usePhase,
+  UNCONNECTED_MS,
+} from './screen/context.js';
+export type { EdmOpenDisplayRequest, EdmPhase, EdmScreenEnv } from './screen/context.js';
 export {
   registerEdmWidget,
   getEdmWidget,

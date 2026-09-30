@@ -23,6 +23,7 @@ export interface EdmScreenProps {
   /** Path of the file under the display root (relative lookups, window title). */
   readonly path: string;
   readonly openDisplay?: (req: EdmOpenDisplayRequest) => void;
+  readonly closeDisplay?: () => void;
 }
 
 export function screenSize(doc: EdmDocument): { w: number; h: number } {
@@ -61,12 +62,21 @@ export function screenFonts(doc: EdmDocument): string[] {
   return [...out];
 }
 
-export function EdmScreen({ doc, palette, pv, macros = {}, path, openDisplay }: EdmScreenProps) {
+export function EdmScreen({
+  doc,
+  palette,
+  pv,
+  macros = {},
+  path,
+  openDisplay,
+  closeDisplay,
+}: EdmScreenProps) {
   const { w, h } = screenSize(doc);
   const bg = palette.spec(parseColorSpec(propStr(doc.screen, 'bgColor'))) ?? '#c8c8c8';
+  const fg = palette.spec(parseColorSpec(propStr(doc.screen, 'fgColor'))) ?? '#000000';
   const env: EdmScreenEnv = useMemo(
-    () => ({ palette, pv, macros, path, displayBg: bg, openDisplay }),
-    [palette, pv, macros, path, bg, openDisplay]
+    () => ({ palette, pv, macros, path, displayBg: bg, displayFg: fg, openDisplay, closeDisplay }),
+    [palette, pv, macros, path, bg, fg, openDisplay, closeDisplay]
   );
   return (
     <EdmScreenContext.Provider value={env}>

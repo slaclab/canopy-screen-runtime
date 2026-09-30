@@ -1,68 +1,144 @@
-// relatedDisplayClass. Look matches EDM's baselib/related_display.cc
-// drawActive: bgColor box, a 1-px frame (botShadow top/left, topShadow
-// bottom/right) with a 2-px raised bevel inside it, the label centred at
-// x + w/2 with its top at y + h/2 - ascent/2, clipped to the object; `icon`
-// adds EDM's two-window glyph. `invisible` objects draw nothing but stay
-// clickable (hotspots over schematics). colorPv evaluates colour rules.
+// relatedDisplayClass. Behaviour matches EDM's baselib/related_display.cc:
+//   - look: bgColor face on a (w+1) x (h+1) footprint, EDM's raised bevel,
+//     the label centred at x + w/2 with its top at y + h/2 - ascent/2, clipped
+//     to the object; `icon` adds the two-window glyph; `invisible` objects
+//     draw nothing but stay clickable (hotspots over schematics); colorPv
+//     evaluates colour rules; with PVs, nothing is drawn until they connect
+//     (a 1-px outline in the disconnected colour after 2 s);
+//   - one display opens on press; several open a menu of menuLabel entries on
+//     release; `pv`/`value` pairs are written first when all are connected;
+//   - macros: replaceSymbols -> only the entry's symbols; else the window's
+//     macros, then the entry's symbols, and on a name clash the INHERITED
+//     value wins (propagateMacros 0 inherits nothing here: the viewer has no
+//     application-level macros); closeAction closes this display afterwards.
 // Written from that behaviour; no EDM code is copied.
 
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { resolveFont, textWidth } from '../config/fonts.js';
 import { expandMacros, parseMacroString } from '../macros.js';
 import { propBool, propIndexedInts, propIndexedStrings, propInt, propStr } from '../model.js';
-import { useEdmPv, useEdmScreen, useExpanded } from '../screen/context.js';
+import type { EdmPvData } from '../pv/types.js';
+import { useEdmPut, useEdmPv, useEdmScreen, useExpanded, usePhase } from '../screen/context.js';
+import { CentredLabel, Face, Hotspot, PopupMenu, XLines, raisedBevel } from './button.js';
 import type { EdmWidgetProps } from './registry.js';
-import { SvgBox, TextRun, colorSpec, geom, idiv } from './shared.js';
+import { Unconnected } from './Rectangle.js';
+import { SvgBox, TextRun, atof, atol, colorSpec, geom, idiv, pvProp } from './shared.js';
 
 const CLS = 'relatedDisplayClass';
+
+/** The value a related display (or message button) writes, by destination type. */
+export function valueFor(pv: EdmPvData | undefined, text: string): number | string {
+  switch (pv?.type) {
+    case 'integer':
+    case 'enum':
+      return atol(text);
+    case 'string':
+      return text.slice(0, 39);
+    default:
+      return atof(text);
+  }
+}
 
 export function RelatedDisplay({ obj }: EdmWidgetProps) {
   const env = useEdmScreen();
   const { palette } = env;
   const p = obj.props;
   const g = geom(p);
-  const cpv = useEdmPv(propStr(p, 'colorPv'), `${CLS}.colorPv`);
+  const colorPv = pvProp(p, 'colorPv');
+  const cpv = useEdmPv(colorPv, `${CLS}.colorPv`);
+  const pvNames = propIndexedStrings(p, 'pv');
+  const values = propIndexedStrings(p, 'value');
+  const numPvs = Math.min(4, propInt(p, 'numPvs', 0));
+  // EDM allows 4 destination PVs; hooks need a fixed count.
+  const dest = [
+    useEdmPv(numPvs > 0 ? pvNames[0] : undefined, `${CLS}.pv`),
+    useEdmPv(numPvs > 1 ? pvNames[1] : undefined, `${CLS}.pv`),
+    useEdmPv(numPvs > 2 ? pvNames[2] : undefined, `${CLS}.pv`),
+    useEdmPv(numPvs > 3 ? pvNames[3] : undefined, `${CLS}.pv`),
+  ];
+  const put = useEdmPut();
   const label = useExpanded(propStr(p, 'buttonLabel') ?? '') ?? '';
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+
   const files = propIndexedStrings(p, 'displayFileName');
   const labels = propIndexedStrings(p, 'menuLabel');
   const symbols = propIndexedStrings(p, 'symbols');
   const propagate = propIndexedInts(p, 'propagateMacros');
+  const replace = propIndexedInts(p, 'replaceSymbols');
   const closeAction = propIndexedInts(p, 'closeAction');
-  const n = Math.min(propInt(p, 'numDsps', files.length), files.length);
+  const closeDisplay = propIndexedInts(p, 'closeDisplay');
+  const n = Math.min(propInt(p, 'numDsps', files.length), 24);
   const targets: { file: string; label: string; i: number }[] = [];
   for (let i = 0; i < n; i++) {
     const f = files[i];
-    if (f?.trim()) targets.push({ file: f.trim(), label: labels[i] ?? f, i });
+    if (f?.trim()) {
+      targets.push({ file: f.trim(), label: expandMacros(labels[i] ?? '', env.macros), i });
+    }
   }
 
+  const used = dest.slice(0, numPvs).filter((_, i) => pvNames[i]?.trim());
+  const defined = [...(colorPv ? [cpv] : []), ...used];
+  const phase = usePhase(defined);
+
   const open = (t: { file: string; i: number }) => {
+    // Destination PVs are written at the start of every open, when all are connected.
+    if (used.length && used.every((d) => d?.connected)) {
+      for (let i = 0; i < numPvs; i++) {
+        if (pvNames[i]?.trim()) {
+          put(pvNames[i], valueFor(dest[i], expandMacros(values[i] ?? '', env.macros)));
+        }
+      }
+    }
     const own = parseMacroString(expandMacros(symbols[t.i] ?? '', env.macros));
-    const macros = (propagate[t.i] ?? 1) ? { ...env.macros, ...own } : own;
+    let macros: Record<string, string>;
+    if (replace[t.i]) macros = own;
+    else if (propagate[t.i] ?? 1) macros = { ...own, ...env.macros };
+    else macros = own;
+    const close = (closeAction[t.i] ?? closeDisplay[t.i] ?? 0) !== 0;
     env.openDisplay?.({
       file: expandMacros(t.file, env.macros),
       fromPath: env.path,
       macros,
-      replace: (closeAction[t.i] ?? 0) !== 0,
+      replace: close,
     });
   };
 
+  const swap = propBool(p, 'swapButtons');
+  const isButton1 = (button: number) => (swap ? button === 2 : button === 0);
   const hotspot = (
-    <div
-      role="link"
-      data-edm-class={CLS}
-      title={targets.map((t) => t.label).join('\n') || undefined}
-      onClick={targets.length ? () => open(targets[0]) : undefined}
-      style={{
-        position: 'absolute',
-        left: g.x,
-        top: g.y,
-        width: g.w + 1,
-        height: g.h + 1,
-        cursor: targets.length ? 'pointer' : 'default',
-        pointerEvents: targets.length ? 'auto' : 'none',
-      }}
-    />
+    <>
+      <Hotspot
+        {...g}
+        cls={CLS}
+        active={targets.length > 0}
+        cursor="pointer"
+        title={targets.map((t) => t.label || t.file).join('\n')}
+        onPress={(e) => {
+          if (isButton1(e.button) && targets.length === 1) open(targets[0]);
+        }}
+        onRelease={(e) => {
+          if (isButton1(e.button) && targets.length > 1) setMenu({ x: e.clientX, y: e.clientY });
+        }}
+      />
+      {menu ? (
+        <PopupMenu
+          at={menu}
+          onClose={() => setMenu(null)}
+          items={targets.map((t) => ({ label: t.label, onSelect: () => open(t) }))}
+        />
+      ) : null}
+    </>
   );
+
+  if (phase !== 'init') {
+    return (
+      <>
+        {phase === 'unconnected' ? <Unconnected {...g} color={palette.disconnected()} /> : null}
+        {hotspot}
+      </>
+    );
+  }
   if (propBool(p, 'invisible')) return hotspot;
 
   const font = resolveFont(propStr(p, 'font'));
@@ -71,25 +147,20 @@ export function RelatedDisplay({ obj }: EdmWidgetProps) {
   const ts = palette.spec(colorSpec(p, 'topShadowColor'));
   const bs = palette.spec(colorSpec(p, 'botShadowColor'));
   const { x, y, w, h } = g;
-  // Pixel rows/columns of the frame and bevel, as 1-px rectangles.
-  const px = (x0: number, y0: number, x1: number, y1: number, c: string | undefined, k: string) =>
-    x1 < x0 || y1 < y0 ? null : (
-      <rect key={k} x={x0} y={y0} width={x1 - x0 + 1} height={y1 - y0 + 1} fill={c} />
-    );
   const icon = propBool(p, 'icon');
   const asc = font.ascent;
 
-  let text: ReactNode = null;
+  let content: ReactNode = null;
   if (label.trim()) {
     if (!icon) {
-      const sw = textWidth(font, label);
-      text = (
-        <TextRun
+      content = (
+        <CentredLabel
           font={font}
-          text={label}
-          x={x + idiv(w, 2) - idiv(sw, 2)}
-          y={y + idiv(h, 2) - idiv(asc, 2) + asc}
+          text={label.slice(0, 39)}
+          tX={x + idiv(w, 2)}
+          tY={y + idiv(h, 2) - idiv(asc, 2)}
           fill={fg}
+          clip={[x, y, w, h]}
         />
       );
     } else {
@@ -101,8 +172,15 @@ export function RelatedDisplay({ obj }: EdmWidgetProps) {
       const size = Math.trunc(asc - 2 * ofs + 0.5);
       const cx = tX - Math.trunc(1.5 * asc + 0.5);
       const cy = tY + ofs;
-      text = (
-        <>
+      content = (
+        <svg
+          x={x}
+          y={y}
+          width={Math.max(0, w)}
+          height={Math.max(0, h)}
+          viewBox={`${x} ${y} ${Math.max(0, w)} ${Math.max(0, h)}`}
+          overflow="hidden"
+        >
           <IconWindows
             cx={cx}
             cy={cy - ofs}
@@ -112,7 +190,7 @@ export function RelatedDisplay({ obj }: EdmWidgetProps) {
             bg={bg}
           />
           <TextRun font={font} text={label} x={tX} y={tY + asc} fill={fg} />
-        </>
+        </svg>
       );
     }
   } else if (icon) {
@@ -121,7 +199,7 @@ export function RelatedDisplay({ obj }: EdmWidgetProps) {
     const cy = y + idiv(h, 2);
     const ofs = Math.trunc((min * 2) / 5 + 0.5);
     const size = Math.trunc((min * 3) / 5 - 0.5);
-    text = (
+    content = (
       <IconWindows
         cx={cx - ofs}
         cy={cy - ofs}
@@ -136,29 +214,9 @@ export function RelatedDisplay({ obj }: EdmWidgetProps) {
   return (
     <>
       <SvgBox x={x} y={y} w={w + 1} h={h + 1} clip>
-        {px(x, y, x + w, y + h, bg, 'bg')}
-        {px(x, y, x + w, y, bs, 'ft')}
-        {px(x, y, x, y + h, bs, 'fl')}
-        {px(x, y + h, x + w, y + h, ts, 'fb')}
-        {px(x + w, y, x + w, y + h, ts, 'fr')}
-        {px(x + 1, y + 1, x + w - 1, y + 1, ts, 't1')}
-        {px(x + 2, y + 2, x + w - 2, y + 2, ts, 't2')}
-        {px(x + 1, y + 1, x + 1, y + h - 1, ts, 'l1')}
-        {px(x + 2, y + 2, x + 2, y + h - 2, ts, 'l2')}
-        {px(x + 1, y + h - 1, x + w - 1, y + h - 1, bs, 'b1')}
-        {px(x + 2, y + h - 2, x + w - 2, y + h - 2, bs, 'b2')}
-        {px(x + w - 1, y + 1, x + w - 1, y + h - 1, bs, 'r1')}
-        {px(x + w - 2, y + 2, x + w - 2, y + h - 2, bs, 'r2')}
-        <svg
-          x={x}
-          y={y}
-          width={Math.max(0, w)}
-          height={Math.max(0, h)}
-          viewBox={`${x} ${y} ${Math.max(0, w)} ${Math.max(0, h)}`}
-          overflow="hidden"
-        >
-          {text}
-        </svg>
+        <Face {...g} color={bg} />
+        <XLines lines={raisedBevel(x, y, w, h, ts, bs)} />
+        {content}
       </SvgBox>
       {hotspot}
     </>

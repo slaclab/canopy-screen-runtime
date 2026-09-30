@@ -115,6 +115,11 @@ export class EdmPalette {
     return idx === undefined ? undefined : this.statics.get(idx)?.css;
   }
 
+  /** EDM's special "disconnected" colour (colors.list `alarm { disconnected }`). */
+  disconnected(): string {
+    return this.alarm[AlarmSeverity.DISCONNECTED] ?? '#ffffff';
+  }
+
   /** EDM's special INVALID colour (colors.list `alarm { invalid }`), for undefined indices. */
   invalid(): string {
     return this.alarm[AlarmSeverity.INVALID] ?? '#ffffff';

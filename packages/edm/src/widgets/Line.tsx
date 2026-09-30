@@ -5,10 +5,10 @@
 // that behaviour; no EDM code is copied.
 
 import { propBool, propInt, propIntList, propStr } from '../model.js';
-import { useEdmPv, useEdmScreen } from '../screen/context.js';
+import { useEdmPv, useEdmScreen, usePhase } from '../screen/context.js';
 import type { EdmWidgetProps } from './registry.js';
 import { Unconnected } from './Rectangle.js';
-import { SvgBox, colorSpec, edmColor, geom, useVisibility } from './shared.js';
+import { SvgBox, colorSpec, edmColor, geom, pvProp, useVis } from './shared.js';
 
 const CLS = 'activeLineClass';
 const ARROW_LEN = 14;
@@ -43,13 +43,14 @@ export function Line({ obj }: EdmWidgetProps) {
   const { palette } = useEdmScreen();
   const p = obj.props;
   const g = geom(p);
-  const alarmPv = propStr(p, 'alarmPv');
+  const alarmPv = pvProp(p, 'alarmPv');
   const alarm = useEdmPv(alarmPv, `${CLS}.alarmPv`);
-  const visible = useVisibility(p, CLS);
-  if (visible === null || (alarmPv?.trim() && !alarm)) return null;
-  if (alarm && !alarm.connected)
-    return <Unconnected {...g} color={edmColor(palette, undefined, { data: alarm })} />;
+  const { visible, data: vis, defined: hasVis } = useVis(p, CLS);
+  const phase = usePhase([...(alarmPv ? [alarm] : []), ...(hasVis ? [vis] : [])]);
+  if (phase === 'waiting') return null;
+  if (phase === 'unconnected') return <Unconnected {...g} color={palette.disconnected()} />;
   if (!visible) return null;
+  const down = [alarm, vis].some((d) => d && !d.connected);
 
   const xs = propIntList(p, 'xPoints');
   const ys = propIntList(p, 'yPoints');
@@ -63,16 +64,14 @@ export function Line({ obj }: EdmWidgetProps) {
   const lineSpec = colorSpec(p, 'lineColor');
   const fillSpec = colorSpec(p, 'fillColor');
   const lw = propInt(p, 'lineWidth', 1);
-  const fill = edmColor(palette, fillSpec, {
-    data: alarm,
-    alarmSensitive: propBool(p, 'fillAlarm'),
-  });
-  const line = edmColor(palette, lineSpec, {
-    data: alarm,
-    alarmSensitive: propBool(p, 'lineAlarm'),
-  });
-  const fillShown = propBool(p, 'fill') && !palette.isInvisible(fillSpec, alarm?.num);
-  const lineShown = !palette.isInvisible(lineSpec, alarm?.num);
+  const fill = down
+    ? palette.disconnected()
+    : edmColor(palette, fillSpec, { data: alarm, alarmSensitive: propBool(p, 'fillAlarm') });
+  const line = down
+    ? palette.disconnected()
+    : edmColor(palette, lineSpec, { data: alarm, alarmSensitive: propBool(p, 'lineAlarm') });
+  const fillShown = propBool(p, 'fill') && (hasVis || !palette.isInvisible(fillSpec, alarm?.num));
+  const lineShown = hasVis || !palette.isInvisible(lineSpec, alarm?.num);
   const dash = propStr(p, 'lineStyle') === 'dash' ? '4 4' : undefined;
   const arrows = propStr(p, 'arrows') ?? 'none';
 

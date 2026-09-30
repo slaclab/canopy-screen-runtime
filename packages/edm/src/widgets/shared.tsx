@@ -31,6 +31,21 @@ export function geom(p: EdmProps): Geom {
 export const colorSpec = (p: EdmProps, name: string): EdmColorSpec | undefined =>
   parseColorSpec(propStr(p, name));
 
+/**
+ * A PV-name property, or undefined when EDM treats it as absent: empty,
+ * whitespace only, or starting with `#` (its "blank or comment" rule).
+ */
+export function pvProp(p: EdmProps, name: string): string | undefined {
+  const v = propStr(p, name)?.trim();
+  return v && !v.startsWith('#') ? v : undefined;
+}
+
+/** C atol: the leading integer, 0 when there is none. */
+export function atol(s: string | undefined): number {
+  const m = /^\s*[+-]?\d+/.exec(s ?? '');
+  return m ? parseInt(m[0], 10) : 0;
+}
+
 /** C atof: the leading number, 0 when there is none (a macro, a PV name). */
 export function atof(s: string | undefined): number {
   const n = parseFloat(s ?? '');
@@ -40,15 +55,24 @@ export function atof(s: string | undefined): number {
 /**
  * EDM visibility (x_text_obj.cc executeDeferred and the same code in every
  * graphic): shown while visMin <= value < visMax, flipped by visInvert. true
- * without a visPv; null until the visPv first reports.
+ * without a visPv; null until the visPv first reports. `data` is the visPv's
+ * state (undefined without one), for the object's connection phase.
  */
-export function useVisibility(p: EdmProps, cls: string): boolean | null {
-  const vis = useEdmPv(propStr(p, 'visPv'), `${cls}.visPv`);
-  if (!propStr(p, 'visPv')?.trim()) return true;
-  if (!vis) return null;
-  if (!vis.connected) return false;
+export function useVis(
+  p: EdmProps,
+  cls: string
+): { visible: boolean | null; data: EdmPvData | undefined; defined: boolean } {
+  const name = pvProp(p, 'visPv');
+  const vis = useEdmPv(name, `${cls}.visPv`);
+  if (!name) return { visible: true, data: undefined, defined: false };
+  if (!vis) return { visible: null, data: vis, defined: true };
+  if (!vis.connected) return { visible: false, data: vis, defined: true };
   const inside = vis.num >= atof(propStr(p, 'visMin')) && vis.num < atof(propStr(p, 'visMax'));
-  return inside !== propBool(p, 'visInvert');
+  return { visible: inside !== propBool(p, 'visInvert'), data: vis, defined: true };
+}
+
+export function useVisibility(p: EdmProps, cls: string): boolean | null {
+  return useVis(p, cls).visible;
 }
 
 /**
@@ -64,9 +88,9 @@ export function edmColor(
   const { data, alarmSensitive } = opts;
   if (data && !data.connected) return palette.alarm[AlarmSeverity.DISCONNECTED] ?? '#ffffff';
   const base = palette.spec(spec, data?.num);
-  if (alarmSensitive && data && data.severity !== AlarmSeverity.NO_ALARM) {
-    return palette.alarm[data.severity] ?? base;
-  }
+  // Alarm-sensitive: the severity's special colour; at NO_ALARM the "noalarm"
+  // colour when the colour file defines one, else the (rule) colour itself.
+  if (alarmSensitive && data) return palette.alarm[data.severity] ?? base;
   return base;
 }
 
@@ -213,8 +237,9 @@ export function SvgBox({
 
 /**
  * XDrawRectangle(x, y, w, h): a thin (width 0/1) outline lights pixels x..x+w
- * and y..y+h; a wide one covers, per edge at coordinate c, the pixels whose
- * centres fall in [c - lw/2, c + lw/2) (X11 wide-line rule, mitred corners).
+ * and y..y+h; a wide one covers, per edge at coordinate c, the pixels p with
+ * c - lw/2 <= p < c + lw/2 (X11 wide-line rule, mitred corners): c-1..c for
+ * width 2, c-1..c+1 for width 3.
  */
 export function XRectOutline({
   x,
@@ -248,8 +273,8 @@ export function XRectOutline({
       />
     );
   }
-  const lo = (c: number) => Math.ceil(c - lineWidth / 2 - 0.5);
-  const hi = (c: number) => Math.ceil(c + lineWidth / 2 - 0.5) - 1;
+  const lo = (c: number) => Math.ceil(c - lineWidth / 2);
+  const hi = (c: number) => Math.ceil(c + lineWidth / 2) - 1;
   const ox0 = lo(x);
   const oy0 = lo(y);
   const ox1 = hi(x + w) + 1;
@@ -275,4 +300,10 @@ export function XRectOutline({
   let d = `M${ox0} ${oy0}H${ox1}V${oy1}H${ox0}Z`;
   if (ix1 > ix0 && iy1 > iy0) d += `M${ix0} ${iy0}V${iy1}H${ix1}V${iy0}Z`;
   return <path d={d} fill={color} fillRule="evenodd" />;
+}
+
+/** C rint(): round half to even. */
+export function rint(v: number): number {
+  const r = Math.round(v);
+  return Math.abs(v % 1) === 0.5 && r % 2 !== 0 ? r - 1 : r;
 }

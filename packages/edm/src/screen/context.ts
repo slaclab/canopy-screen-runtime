@@ -1,4 +1,11 @@
-import { createContext, useContext, useMemo, useSyncExternalStore } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import type { EdmPalette } from '../config/colors.js';
 import { expandMacros } from '../macros.js';
 import type { EdmMacros } from '../macros.js';
@@ -24,7 +31,11 @@ export interface EdmScreenEnv {
   readonly path: string;
   /** Display background (screen bgColor), for widgets that use it. */
   readonly displayBg: string;
+  /** Display foreground (screen fgColor): EDM's hover rectangle colour. */
+  readonly displayFg: string;
   readonly openDisplay?: (req: EdmOpenDisplayRequest) => void;
+  /** Close this display (exit button, closeAction); the host decides how. */
+  readonly closeDisplay?: () => void;
 }
 
 export const EdmScreenContext = createContext<EdmScreenEnv | null>(null);
@@ -79,4 +90,38 @@ class PvStore {
   };
 
   get = () => this.data;
+}
+
+/** Write to an EDM PV string (macros expanded here), e.g. from a button press. */
+export function useEdmPut(): (raw: string | undefined, value: number | string) => void {
+  const env = useEdmScreen();
+  return (raw, value) => {
+    const name = raw?.trim();
+    if (name) env.pv.put(expandMacros(name, env.macros), value);
+  };
+}
+
+/** EDM's unconnectedTimer: how long an object waits before drawing its unconnected look. */
+export const UNCONNECTED_MS = 2000;
+
+/**
+ * An object's connection phase, as EDM's init flag and unconnected timer
+ * give it. `pvs` holds the data of every PV the object defines:
+ *   waiting      not all connected yet, under 2 s since activation: EDM draws nothing
+ *   unconnected  still not all connected after 2 s: the unconnected placeholder
+ *   init         every PV has connected at least once. This latches: a later
+ *                disconnect keeps the normal shape, in the disconnected colour.
+ */
+export type EdmPhase = 'waiting' | 'unconnected' | 'init';
+
+export function usePhase(pvs: readonly (EdmPvData | undefined)[]): EdmPhase {
+  const all = pvs.every((d) => d?.connected);
+  const [latched, setLatched] = useState(all);
+  const [timedOut, setTimedOut] = useState(false);
+  if (all && !latched) setLatched(true);
+  useEffect(() => {
+    const t = setTimeout(() => setTimedOut(true), UNCONNECTED_MS);
+    return () => clearTimeout(t);
+  }, []);
+  return latched || all ? 'init' : timedOut ? 'unconnected' : 'waiting';
 }

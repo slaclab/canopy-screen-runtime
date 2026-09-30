@@ -4,9 +4,9 @@
 // lineAlarm/fillAlarm, alarm colours; `invisible` draws nothing.
 
 import { propBool, propInt, propStr } from '../model.js';
-import { useEdmPv, useEdmScreen } from '../screen/context.js';
+import { useEdmPv, useEdmScreen, usePhase } from '../screen/context.js';
 import type { EdmWidgetProps } from './registry.js';
-import { SvgBox, XRectOutline, colorSpec, edmColor, geom, useVisibility } from './shared.js';
+import { SvgBox, XRectOutline, colorSpec, edmColor, geom, pvProp, useVis } from './shared.js';
 
 const CLS = 'activeRectangleClass';
 
@@ -14,27 +14,30 @@ export function Rectangle({ obj }: EdmWidgetProps) {
   const { palette } = useEdmScreen();
   const p = obj.props;
   const g = geom(p);
-  const alarmPv = propStr(p, 'alarmPv');
+  const alarmPv = pvProp(p, 'alarmPv');
   const alarm = useEdmPv(alarmPv, `${CLS}.alarmPv`);
-  const visible = useVisibility(p, CLS);
-  if (visible === null || (alarmPv?.trim() && !alarm)) return null;
-  if (alarm && !alarm.connected)
-    return <Unconnected {...g} color={edmColor(palette, undefined, { data: alarm })} />;
+  const { visible, data: vis, defined: hasVis } = useVis(p, CLS);
+  const phase = usePhase([...(alarmPv ? [alarm] : []), ...(hasVis ? [vis] : [])]);
+  // EDM draws nothing until every PV has connected, then (after 2 s) a 1-px
+  // outline in the disconnected colour; once initialised, a dropped PV
+  // repaints the shape in the disconnected colour.
+  if (phase === 'waiting') return null;
+  if (phase === 'unconnected') return <Unconnected {...g} color={palette.disconnected()} />;
   if (!visible || propBool(p, 'invisible')) return null;
+  const down = [alarm, vis].some((d) => d && !d.connected);
 
   const lineSpec = colorSpec(p, 'lineColor');
   const fillSpec = colorSpec(p, 'fillColor');
   const lw = propInt(p, 'lineWidth', 1);
-  const fillShown = propBool(p, 'fill') && !palette.isInvisible(fillSpec, alarm?.num);
-  const lineShown = !palette.isInvisible(lineSpec, alarm?.num);
-  const fill = edmColor(palette, fillSpec, {
-    data: alarm,
-    alarmSensitive: propBool(p, 'fillAlarm'),
-  });
-  const line = edmColor(palette, lineSpec, {
-    data: alarm,
-    alarmSensitive: propBool(p, 'lineAlarm'),
-  });
+  // The "invisible" colour hides a part only when there is no visPv.
+  const fillShown = propBool(p, 'fill') && (hasVis || !palette.isInvisible(fillSpec, alarm?.num));
+  const lineShown = hasVis || !palette.isInvisible(lineSpec, alarm?.num);
+  const fill = down
+    ? palette.disconnected()
+    : edmColor(palette, fillSpec, { data: alarm, alarmSensitive: propBool(p, 'fillAlarm') });
+  const line = down
+    ? palette.disconnected()
+    : edmColor(palette, lineSpec, { data: alarm, alarmSensitive: propBool(p, 'lineAlarm') });
   const pad = Math.max(1, lw);
   return (
     <SvgBox x={g.x - pad} y={g.y - pad} w={g.w + 2 * pad + 1} h={g.h + 2 * pad + 1}>

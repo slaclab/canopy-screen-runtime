@@ -32,6 +32,7 @@ const pv = (over: Partial<EdmPvData>): EdmPvData => ({
   enumChoices: [],
   lowerLimit: 0,
   upperLimit: 10,
+  writable: true,
   ...over,
 });
 
@@ -175,7 +176,7 @@ describe('EdmScreen', () => {
       {},
       { D: 'DEV', KEEP: 'k' }
     );
-    fireEvent.click(screen.getByRole('link'));
+    fireEvent.mouseDown(screen.getByRole('button'));
     expect(openDisplay).toHaveBeenCalledWith({
       file: 'detail',
       fromPath: 'misc/test.edl',
