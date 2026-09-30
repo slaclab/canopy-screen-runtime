@@ -47,6 +47,9 @@ importers:
       '@slaclab/canopy-client':
         specifier: ^0.1.2
         version: 0.1.2
+      '@slaclab/canopy-edm':
+        specifier: workspace:^
+        version: link:../../packages/edm
       '@slaclab/canopy-react':
         specifier: ^0.1.2
         version: 0.1.2(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -115,6 +118,49 @@ importers:
       '@types/react':
         specifier: ^19.2.14
         version: 19.2.17
+      typescript:
+        specifier: ~6.0.2
+        version: 6.0.3
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@types/node@24.13.3)(jsdom@26.1.0)(vite@8.0.12(@types/node@24.13.3)(sass@1.101.0)(yaml@2.9.0))
+
+  packages/edm:
+    dependencies:
+      '@fontsource/arimo':
+        specifier: ^5.3.0
+        version: 5.3.0
+      '@fontsource/cousine':
+        specifier: ^5.3.0
+        version: 5.3.0
+      '@fontsource/tinos':
+        specifier: ^5.3.0
+        version: 5.3.0
+      '@slaclab/canopy-client':
+        specifier: ^0.1.2
+        version: 0.1.2
+    devDependencies:
+      '@testing-library/dom':
+        specifier: ^10.4.1
+        version: 10.4.1
+      '@testing-library/react':
+        specifier: ^16.3.2
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@types/react':
+        specifier: ^19.2.14
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.17)
+      jsdom:
+        specifier: ^26.0.0
+        version: 26.1.0
+      react:
+        specifier: ^19.2.6
+        version: 19.2.7
+      react-dom:
+        specifier: ^19.2.6
+        version: 19.2.7(react@19.2.7)
       typescript:
         specifier: ~6.0.2
         version: 6.0.3
@@ -434,6 +480,15 @@ packages:
 
   '@floating-ui/utils@0.2.11':
     resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
+
+  '@fontsource/arimo@5.3.0':
+    resolution: {integrity: sha512-nhxZ2sTVZYX8DJBgLuyX360B5vE4mxqpmjlKTRfucIqfcWRVx9vOYzWBc1IgEX0ist48VMC10PRKbFyH+4QFvQ==}
+
+  '@fontsource/cousine@5.3.0':
+    resolution: {integrity: sha512-EhVes1KpHrmPwGVCoVxYpdiIi/L2LRGxbAuv07m3TdY76f9Vmwyhd/TNqi2RC0NOvMCNt2FtYPJcAfFfkK9DoQ==}
+
+  '@fontsource/tinos@5.3.0':
+    resolution: {integrity: sha512-VVDyyZdbcsLKxo/W7rClAvacD/7DsGc7J5xzzp51Tndib8kDkEe/0bqbb3Xb3iH6+IUjt07aRsvtQ9MGeGGi4w==}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -2202,6 +2257,12 @@ snapshots:
       tabbable: 6.5.0
 
   '@floating-ui/utils@0.2.11': {}
+
+  '@fontsource/arimo@5.3.0': {}
+
+  '@fontsource/cousine@5.3.0': {}
+
+  '@fontsource/tinos@5.3.0': {}
 
   '@humanfs/core@0.19.2':
     dependencies:

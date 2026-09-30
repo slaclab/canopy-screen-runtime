@@ -1,0 +1,59 @@
+{
+  "name": "@slaclab/canopy-edm",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Faithful in-browser renderer for legacy EDM (.edl) screens: EDL parser, colors.list/fonts, EDM-look widgets and a pluggable PV layer",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slaclab/canopy-screen-runtime.git",
+    "directory": "packages/edm"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./styles.css": "./styles.css"
+  },
+  "files": [
+    "dist",
+    "styles.css"
+  ],
+  "sideEffects": [
+    "*.css"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@fontsource/arimo": "^5.3.0",
+    "@fontsource/cousine": "^5.3.0",
+    "@fontsource/tinos": "^5.3.0",
+    "@slaclab/canopy-client": "^0.1.2"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "jsdom": "^26.0.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "typescript": "~6.0.2",
+    "vitest": "^4.1.6"
+  }
+}
