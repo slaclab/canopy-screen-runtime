@@ -2,6 +2,7 @@ import { AlarmSeverity } from '@slaclab/canopy-client';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { EdmPalette } from '../config/colors.js';
+import { resolveFont, textWidth } from '../config/fonts.js';
 import { parseEdl } from '../parser/edl.js';
 import { calcConnection } from '../pv/calc.js';
 import { EdmPvLayer } from '../pv/layer.js';
@@ -376,6 +377,35 @@ describe('related display', () => {
 });
 
 describe('graphics', () => {
+  it('static text: autoSize keeps the centre of the box sized to the raw string', () => {
+    show(
+      obj(
+        'activeXTextClass',
+        `${COLORS}\nfontAlign "center"\nuseDisplayBg\nautoSize\nvalue {\n  "$(P) and $(KEEP)"\n}`
+      )
+    );
+    const font = resolveFont('helvetica-medium-r-12.0');
+    const loaded = textWidth(font, '$(P) and $(KEEP)');
+    const shown = textWidth(font, 'DEV and inherited');
+    const svg = screen.getByText('DEV and inherited').closest('svg')!;
+    expect(svg.style.left).toBe(`${10 - Math.trunc(shown / 2) + Math.trunc(loaded / 2)}px`);
+    expect(svg.getAttribute('width')).toBe(String(shown));
+  });
+
+  it("lines: width 1 is X's band around the path, width 0 the thin line with both ends", () => {
+    const line = (extra: string) =>
+      obj(
+        'activeLineClass',
+        `lineColor index 14\nfillColor index 4\nnumPoints 2\nxPoints {\n  0 10\n  1 30\n}\nyPoints {\n  0 20\n  1 20\n}\n${extra}`
+      );
+    show(line('') + line('lineWidth 0'));
+    const [band, thin] = [...document.querySelectorAll('polyline')];
+    expect(band.getAttribute('points')).toBe('10.46875,20.46875 30.46875,20.46875');
+    expect(band.getAttribute('stroke-linecap')).toBe('butt');
+    expect(thin.getAttribute('points')).toBe('10.5,20.5 30.5,20.5');
+    expect(thin.getAttribute('stroke-linecap')).toBe('square');
+  });
+
   it('byte: cells by bit, on cells in the alarm colour', () => {
     show(
       obj(

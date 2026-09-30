@@ -1,18 +1,23 @@
 // activeLineClass (polyline / polygon). Behaviour matches EDM's
 // baselib/line_obj.cc drawActive: XFillPolygon when `fill`, XDrawLines with
 // lineWidth/lineStyle, `closePolygon` repeats the first point (3+ points),
-// arrowheads 14 px long and 10 px wide at the first/last point. Written from
-// that behaviour; no EDM code is copied.
+// arrowheads 14 px long and 10 px wide at the first/last point, filled and
+// outlined with the line width. X draws every line of width >= 1 as a band
+// around the ideal line (butt caps, mitred joints, so an open line stops short
+// of its far end pixel); only width 0 is the thin line that lights both ends.
+// Written from that behaviour; no EDM code is copied.
 
 import { propBool, propInt, propIntList, propStr } from '../model.js';
 import { useEdmPv, useEdmScreen, usePhase } from '../screen/context.js';
 import type { EdmWidgetProps } from './registry.js';
 import { Unconnected } from './Rectangle.js';
-import { SvgBox, colorSpec, edmColor, geom, pvProp, useVis } from './shared.js';
+import { SvgBox, X_PIXEL, colorSpec, edmColor, geom, pvProp, useVis } from './shared.js';
 
 const CLS = 'activeLineClass';
 const ARROW_LEN = 14;
 const ARROW_HALF = 5;
+/** X mitres a joint unless its angle is under 11 degrees: 1 / sin(5.5 deg). */
+const X_MITER_LIMIT = 10.43;
 
 type Pt = readonly [number, number];
 
@@ -80,12 +85,23 @@ export function Line({ obj }: EdmWidgetProps) {
   const maxX = Math.max(...pts.map((q) => q[0])) + lw + ARROW_LEN + 1;
   const maxY = Math.max(...pts.map((q) => q[1])) + lw + ARROW_LEN + 1;
 
-  // Thin lines (width 0/1) light the pixels on the path, endpoints included:
-  // stroke through pixel centres with square caps. Wide lines follow X's rule
-  // (pixel centres inside the stroke polygon): stroke the corner coordinates.
-  const thin = lw <= 1;
-  const off = thin ? 0.5 : 0;
-  const path = pts.map((q) => `${q[0] + off},${q[1] + off}`).join(' ');
+  // Width 0: the pixels on the path, both ends included (a 1-px stroke through
+  // pixel centres with square caps). Width >= 1: the band around the path.
+  const thin = lw <= 0;
+  const off = thin ? 0.5 : X_PIXEL;
+  const at = (q: Pt) => `${q[0] + off},${q[1] + off}`;
+  // X joins the ends of a line that returns to its first point.
+  const last = pts[pts.length - 1];
+  const closed = pts.length > 3 && pts[0][0] === last[0] && pts[0][1] === last[1];
+  const stroke = {
+    fill: 'none',
+    stroke: line,
+    strokeWidth: thin ? 1 : lw,
+    strokeLinecap: thin ? ('square' as const) : ('butt' as const),
+    strokeLinejoin: 'miter' as const,
+    strokeMiterlimit: X_MITER_LIMIT,
+    strokeDasharray: dash,
+  };
   const heads: Pt[][] = [];
   if (n > 1 && (arrows === 'from' || arrows === 'both')) heads.push(arrowHead(pts[0], pts[1]));
   if (n > 1 && (arrows === 'to' || arrows === 'both'))
@@ -94,28 +110,29 @@ export function Line({ obj }: EdmWidgetProps) {
   return (
     <SvgBox x={minX} y={minY} w={maxX - minX} h={maxY - minY}>
       {fillShown && pts.length > 2 ? (
-        <polygon points={pts.map((q) => `${q[0]},${q[1]}`).join(' ')} fill={fill} stroke="none" />
+        <polygon
+          points={pts.map((q) => `${q[0] + X_PIXEL},${q[1] + X_PIXEL}`).join(' ')}
+          fill={fill}
+          stroke="none"
+        />
       ) : null}
       {lineShown && n > 1 ? (
-        <polyline
-          points={path}
-          fill="none"
-          stroke={line}
-          strokeWidth={thin ? 1 : lw}
-          strokeLinecap={thin ? 'square' : 'butt'}
-          strokeLinejoin="miter"
-          strokeDasharray={dash}
-        />
+        closed ? (
+          <polygon points={pts.slice(0, -1).map(at).join(' ')} {...stroke} />
+        ) : (
+          <polyline points={pts.map(at).join(' ')} {...stroke} />
+        )
       ) : null}
       {lineShown
         ? heads.map((h, i) => (
             <polygon
               key={i}
-              points={h.map((q) => `${q[0] + off},${q[1] + off}`).join(' ')}
+              points={h.slice(0, 3).map(at).join(' ')}
               fill={line}
               stroke={line}
               strokeWidth={thin ? 1 : lw}
               strokeLinejoin="miter"
+              strokeMiterlimit={X_MITER_LIMIT}
             />
           ))
         : null}

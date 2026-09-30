@@ -26,7 +26,8 @@ export function XText({ obj }: EdmWidgetProps) {
   const p = obj.props;
   const g = geom(p);
   const font = resolveFont(propStr(p, 'font'));
-  const text = useExpanded(propText(p, 'value') ?? '') ?? '';
+  const raw = propText(p, 'value') ?? '';
+  const text = useExpanded(raw) ?? '';
   const alarmPv = pvProp(p, 'alarmPv');
   const alarm = useEdmPv(alarmPv, `${CLS}.alarmPv`);
   const { visible, data: vis, defined: hasVis } = useVis(p, CLS);
@@ -60,29 +61,34 @@ export function XText({ obj }: EdmWidgetProps) {
 
   const align = alignOf(p);
   // updateDimensions: box size of the (multi-line) string, then its first
-  // baseline centred in the object; autoSize shrinks the object to the box.
+  // baseline centred in the object. autoSize sizes the object to the string
+  // twice: at load to the raw string (x kept), then on activation to the
+  // macro-expanded one, keeping the centre or right edge of the loaded box.
   const probe = layoutStrings(font, text || ' ', g.x, 0, g.w, align);
-  let { w, h } = g;
+  let { x, w, h } = g;
   if (propBool(p, 'autoSize')) {
+    const loaded = layoutStrings(font, raw || ' ', g.x, 0, g.w, align);
+    if (align === 'center') x = x - idiv(probe.boxW, 2) + idiv(loaded.boxW, 2);
+    else if (align === 'right') x = x - probe.boxW + loaded.boxW;
     w = probe.boxW;
     h = probe.boxH;
   }
   const stringY = g.y + font.ascent + idiv(h, 2) - idiv(probe.boxH, 2);
-  const lay = layoutStrings(font, text, g.x, stringY, w, align);
+  const lay = layoutStrings(font, text, x, stringY, w, align);
   const border = propBool(p, 'border');
   const lt = Math.max(0, propInt(p, 'lineWidth', 1));
 
   return (
-    <SvgBox x={g.x} y={g.y} w={w} h={h} clip>
+    <SvgBox x={x} y={g.y} w={w} h={h} clip>
       {!propBool(p, 'useDisplayBg') && !placeholder ? (
-        <rect x={g.x} y={g.y} width={w} height={h} fill={bg} />
+        <rect x={x} y={g.y} width={w} height={h} fill={bg} />
       ) : null}
       {lay.lines.map((l, i) => (
         <TextRun key={i} font={font} text={l.text} x={l.x} y={l.y} fill={fg} />
       ))}
       {border && !placeholder ? (
         <XRectOutline
-          x={g.x + idiv(lt, 2)}
+          x={x + idiv(lt, 2)}
           y={g.y + idiv(lt, 2)}
           w={w - lt}
           h={h - lt}

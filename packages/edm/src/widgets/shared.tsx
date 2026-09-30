@@ -144,6 +144,16 @@ export function alignOf(p: EdmProps): Align {
   return a === 'center' || a === 'right' ? a : 'left';
 }
 
+/**
+ * Where an X coordinate sits in SVG space. X addresses pixel centres and, for
+ * filled shapes and lines of width >= 1, lights the pixels whose centre is
+ * inside the shape; a centre exactly on an edge counts only when the inside
+ * is to its right or below it. SVG addresses pixel corners, so shapes are
+ * drawn half a pixel in and nudged up-left by a sliver, which settles every
+ * such tie the way X does (with crispEdges the browser samples centres too).
+ */
+export const X_PIXEL = 0.5 - 1 / 32;
+
 /** C integer division (truncates toward zero). */
 export const idiv = (a: number, b: number) => Math.trunc(a / b);
 
