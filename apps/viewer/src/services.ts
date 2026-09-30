@@ -23,6 +23,11 @@ export interface ViewerServices {
   formulas: FormulaSubscriber | null;
   /** loc:// locals (EDM LOC parity); ScreenPage clears it per screen. */
   locals: LocalPVService;
+  /**
+   * The Hare service itself (hare mode), for consumers that need its channel
+   * metadata (the EDM renderer tells integer from double records by PREC).
+   */
+  hare: HarePVService | null;
 }
 
 export function createServices(config: ViewerConfig): ViewerServices {
@@ -47,12 +52,13 @@ export function createServices(config: ViewerConfig): ViewerServices {
       pv,
       formulas: createLocalAwareFormulaSubscriber(locals, createFoxFormulaSubscriber(fox)),
       locals,
+      hare,
     };
   }
 
   const pv = new RoutedPVService({ 'loc://': locals }, new MockPVService());
   pv.connect();
-  return { pv, formulas: createLocalAwareFormulaSubscriber(locals, null), locals };
+  return { pv, formulas: createLocalAwareFormulaSubscriber(locals, null), locals, hare: null };
 }
 
 export const ServicesContext = createContext<ViewerServices | null>(null);

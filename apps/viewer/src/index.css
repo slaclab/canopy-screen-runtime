@@ -120,3 +120,18 @@ body,
   font-size: 0.8125rem;
   color: var(--cds-text-secondary, #c6c6c6);
 }
+
+/* /edl/<path>: the EDM window at the top-left, nothing else (EDM has no
+   chrome inside a display window). */
+.edl-page {
+  min-height: 100%;
+  background: #7f7f7f;
+}
+
+.edl-loading {
+  padding: 1rem;
+  color: #202020;
+  font:
+    14px Arimo,
+    sans-serif;
+}

@@ -99,7 +99,7 @@ beforeEach(() => {
   pv.connect();
   const locals = new LocalPVService();
   locals.connect();
-  services = { pv, formulas: null, locals };
+  services = { pv, formulas: null, locals, hare: null };
 });
 
 afterEach(() => {

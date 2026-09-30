@@ -9,6 +9,10 @@
 //   VITE_RENDER_MODE       'edm' (default) | 'carbon' — default presentation
 //                          of rendered screens; a screen URL's ?render=
 //                          overrides it per page.
+//   VITE_EDM_BASE_URL      display-file endpoint for /edl/<path> (legacy EDM
+//                          screens rendered directly): {base}/files/<path>,
+//                          {base}/config/colors.list. Default '/displays/v1'
+//                          (same origin).
 
 import { DEFAULT_RENDER_MODE, parseRenderMode } from '@slaclab/canopy-screen-runtime';
 import type { RenderMode } from '@slaclab/canopy-screen-runtime';
@@ -19,6 +23,7 @@ export interface ViewerConfig {
   canopyBaseUrl: string;
   canopyApiKey: string | undefined;
   renderMode: RenderMode;
+  edmBaseUrl: string;
 }
 
 export function readConfig(
@@ -31,5 +36,6 @@ export function readConfig(
     canopyBaseUrl: (env.VITE_CANOPY_BASE_URL ?? '').replace(/\/+$/, ''),
     canopyApiKey: env.VITE_CANOPY_API_KEY || undefined,
     renderMode: parseRenderMode(env.VITE_RENDER_MODE) ?? DEFAULT_RENDER_MODE,
+    edmBaseUrl: (env.VITE_EDM_BASE_URL || '/displays/v1').replace(/\/+$/, ''),
   };
 }

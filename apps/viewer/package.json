@@ -17,6 +17,7 @@
     "@carbon/react": "^1.108.0",
     "@carbon/styles": "^1.100.0",
     "@slaclab/canopy-client": "^0.1.2",
+    "@slaclab/canopy-edm": "workspace:^",
     "@slaclab/canopy-react": "^0.1.2",
     "@slaclab/canopy-screen-ir": "^0.1.2",
     "@slaclab/canopy-screen-runtime": "workspace:^",

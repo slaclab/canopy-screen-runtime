@@ -5,15 +5,19 @@ import { Route, Routes } from 'react-router-dom';
 import type { RenderMode } from '@slaclab/canopy-screen-runtime';
 import { BrowsePage } from './pages/BrowsePage.js';
 import { ScreenPage } from './pages/ScreenPage.js';
+import { EdlPage } from './pages/EdlPage.js';
 import { ErrorPanel } from './ErrorPanel.js';
 
 export function App({
   screensBaseUrl,
   defaultRenderMode,
+  edmBaseUrl = '/displays/v1',
 }: {
   screensBaseUrl: string;
   /** VITE_RENDER_MODE; a screen URL's ?render= overrides it. Default 'edm'. */
   defaultRenderMode?: RenderMode;
+  /** VITE_EDM_BASE_URL: the display-file endpoint behind /edl/<path>. */
+  edmBaseUrl?: string;
 }) {
   return (
     <Routes>
@@ -25,6 +29,8 @@ export function App({
           <ScreenPage screensBaseUrl={screensBaseUrl} defaultRenderMode={defaultRenderMode} />
         }
       />
+      {/* legacy EDM screens rendered directly from their .edl file */}
+      <Route path="/edl/*" element={<EdlPage edmBaseUrl={edmBaseUrl} />} />
       <Route path="*" element={<ErrorPanel title="Page not found" />} />
     </Routes>
   );
