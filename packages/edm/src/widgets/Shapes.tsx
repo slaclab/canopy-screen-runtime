@@ -45,13 +45,13 @@ function makeArc(cls: string, isArc: boolean) {
       ? palette.disconnected()
       : edmColor(palette, lineSpec, {
           data: alarm,
-          alarmSensitive: propInt(p, 'lineAlarm', 0) === 1,
+          alarmSensitive: propBool(p, 'lineAlarm'),
         });
     const fill = down
       ? palette.disconnected()
       : edmColor(palette, fillSpec, {
           data: alarm,
-          alarmSensitive: propInt(p, 'fillAlarm', 0) === 1,
+          alarmSensitive: propBool(p, 'fillAlarm'),
         });
     const fillShown = propBool(p, 'fill') && (hasVis || !palette.isInvisible(fillSpec, alarm?.num));
     const lineShown = hasVis || !palette.isInvisible(lineSpec, alarm?.num);

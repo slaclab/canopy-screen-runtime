@@ -51,9 +51,11 @@ export function propStr(props: EdmProps, name: string): string | undefined {
   return typeof v === 'string' ? v : '';
 }
 
-/** C `strtol(s, 0, 0)`-style integer (leading number, hex with 0x), else `def`. */
+/** C `strtol(s, 0, 0)`-style integer (leading number, hex with 0x), else `def`; 1 for a bare tag. */
 export function propInt(props: EdmProps, name: string, def: number): number {
   const v = props[name];
+  // A tag present without a value reads as 1 (EDM's tag reader), e.g. a flag.
+  if (v === true) return 1;
   if (typeof v !== 'string') return def;
   return parseCInt(v) ?? def;
 }
