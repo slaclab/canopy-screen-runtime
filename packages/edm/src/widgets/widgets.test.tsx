@@ -303,6 +303,26 @@ describe('text control editing and null colour', () => {
     expect(puts).toEqual([['V', 4.25]]);
   });
 
+  it('prints hex for double channels as EDM does, and waveforms as their first element', () => {
+    show(
+      obj('activeXTextDspClass', `${COLORS}\ncontrolPv "H"\nformat "hex"\nuseHexPrefix`) +
+        obj('activeXTextDspClass', `${COLORS}\ncontrolPv "D"\nprecision 1`),
+      { H: pv({ num: 10.73 }), D: pv({ num: 7.624 }) }
+    );
+    expect(texts()).toEqual(['0xA', '7.6']);
+  });
+
+  it('motif field: the alarm border is a 2-px window border outside the widget', () => {
+    show(
+      obj('activeXTextDspClass', `${COLORS}\ncontrolPv "V"\nmotifWidget\nfgAlarm\nuseAlarmBorder`),
+      { V: pv({ num: 3, severity: AlarmSeverity.MAJOR }) }
+    );
+    const border = document.querySelector('rect')!;
+    expect(border.getAttribute('fill')).toBe('#ff0000');
+    // the field is as tall as Motif makes it for the font (19 here), not the object's h
+    expect([border.getAttribute('width'), border.getAttribute('height')]).toEqual(['84', '23']);
+  });
+
   it('is display-only without `editable`', () => {
     show(obj('activeXTextDspClass', `${COLORS}\ncontrolPv "V"`), { V: pv({ num: 3 }) });
     expect(document.querySelector('[role=button]')).toBeNull();
@@ -329,6 +349,17 @@ describe('related display', () => {
       macros: { P: 'DEV', KEEP: 'inherited', X: '1' },
       replace: false,
     });
+  });
+
+  it('icon buttons halve heights and ascents as C ints (no rounding up)', () => {
+    show(
+      obj(
+        'relatedDisplayClass',
+        `${COLORS}\nbuttonLabel "go"\nnumDsps 1\ndisplayFileName {\n  0 "a"\n}\nicon`
+      )
+    );
+    // helvetica 12: ascent 11. top = y + h/2 - 11/2 = 20 + 15 - 5; baseline = top + ascent.
+    expect(document.querySelector('text')?.getAttribute('y')).toBe('41');
   });
 
   it('replaceSymbols passes only the entry symbols', () => {

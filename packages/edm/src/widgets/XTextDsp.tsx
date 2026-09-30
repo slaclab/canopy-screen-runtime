@@ -59,7 +59,9 @@ export function textControlValue(p: EdmProps, d: EdmPvData): string {
   const precAttr = propStr(p, 'precision');
   let value: string;
   let numeric = false;
-  switch (d.type) {
+  // `hex` turns a double channel into an integer one (truncated) from connect time.
+  const type = d.type === 'double' && format === 'hex' ? 'integer' : d.type;
+  switch (type) {
     case 'double': {
       const prec =
         propBool(p, 'limitsFromDb') || precAttr === undefined || precAttr.trim() === ''
@@ -290,6 +292,7 @@ export function makeTextDsp(cls: string) {
             bg={down ? palette.disconnected() : bgOwn}
             highlight={0}
             marginHeight={0}
+            border={useAlarmBorder && alarmed && !down ? fgAlarmColor : undefined}
           />
           {controls}
         </>
@@ -355,6 +358,7 @@ function MotifTextField({
   bg,
   highlight,
   marginHeight,
+  border,
 }: {
   x: number;
   y: number;
@@ -366,11 +370,14 @@ function MotifTextField({
   bg: string | undefined;
   highlight: number;
   marginHeight: number;
+  /** An X window border (2 px, outside the widget, which moves in by 2): the alarm border. */
+  border?: string;
 }) {
   const { displayBg } = useEdmScreen();
   const sh = motifShadows(bg ?? '#ffffff');
-  const ox = x + highlight;
-  const oy = y + highlight;
+  const bw = border ? 2 : 0;
+  const ox = x + bw + highlight;
+  const oy = y + bw + highlight;
   const iw = w - 2 * highlight;
   const ih = h - 2 * highlight;
   const r = (x0: number, y0: number, ww: number, hh: number, c: string, k: string) =>
@@ -378,8 +385,9 @@ function MotifTextField({
       <rect key={k} x={ox + x0} y={oy + y0} width={ww} height={hh} fill={c} />
     ) : null;
   return (
-    <SvgBox x={x} y={y} w={w} h={h} clip>
-      {highlight > 0 ? <rect x={x} y={y} width={w} height={h} fill={displayBg} /> : null}
+    <SvgBox x={x} y={y} w={w + 2 * bw} h={h + 2 * bw} clip>
+      {border ? <rect x={x} y={y} width={w + 4} height={h + 4} fill={border} /> : null}
+      {highlight > 0 ? <rect x={x + bw} y={y + bw} width={w} height={h} fill={displayBg} /> : null}
       <rect x={ox} y={oy} width={Math.max(0, iw)} height={Math.max(0, ih)} fill={bg} />
       {r(0, 0, iw, 1, sh.bottom, 'd0')}
       {r(0, 1, iw - 1, 1, sh.bottom, 'd1')}

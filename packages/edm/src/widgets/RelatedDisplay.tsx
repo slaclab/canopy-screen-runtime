@@ -165,9 +165,9 @@ export function RelatedDisplay({ obj }: EdmWidgetProps) {
       );
     } else {
       const sw = textWidth(font, label) + Math.trunc(1.2 * asc + 0.5);
-      const tX =
-        x + Math.trunc(w / 2 + 0.5) - Math.trunc(sw / 2 + 0.5) + Math.trunc(1.2 * asc + 0.5);
-      const tY = y + Math.trunc(h / 2 + 0.5) - Math.trunc(asc / 2 + 0.5);
+      // EDM halves these as C ints before adding its 0.5, so they round down.
+      const tX = x + idiv(w, 2) - idiv(sw, 2) + Math.trunc(1.2 * asc + 0.5);
+      const tY = y + idiv(h, 2) - idiv(asc, 2);
       const ofs = Math.trunc(asc * 0.1 + 0.5);
       const size = Math.trunc(asc - 2 * ofs + 0.5);
       const cx = tX - Math.trunc(1.5 * asc + 0.5);
@@ -197,8 +197,8 @@ export function RelatedDisplay({ obj }: EdmWidgetProps) {
     const min = Math.min(Math.trunc((w * 3) / 5), Math.trunc((h * 3) / 5));
     const cx = x + idiv(w, 2);
     const cy = y + idiv(h, 2);
-    const ofs = Math.trunc((min * 2) / 5 + 0.5);
-    const size = Math.trunc((min * 3) / 5 - 0.5);
+    const ofs = idiv(min * 2, 5);
+    const size = Math.trunc(idiv(min * 3, 5) - 0.5);
     content = (
       <IconWindows
         cx={cx - ofs}
