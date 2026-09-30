@@ -24,6 +24,7 @@
   "files": [
     "NOTICE.md",
     "dist",
+    "fonts",
     "styles.css"
   ],
   "sideEffects": [

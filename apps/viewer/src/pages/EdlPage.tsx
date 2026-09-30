@@ -16,24 +16,12 @@ import {
   parseDisplay,
   propStr,
   pvServiceConnection,
+  screenFonts,
 } from '@slaclab/canopy-edm';
 import { ErrorPanel } from '../ErrorPanel.js';
 import { useServices } from '../services.js';
 
 export const EDL_RESERVED_PARAMS = new Set(['render', 'impl', 'look']);
-
-/** Web fonts the EDM kit draws with; loaded before the screen appears so a
- * screenshot never catches the fallback font. */
-const EDM_FONTS = [
-  '10px Arimo',
-  'bold 10px Arimo',
-  'italic 10px Arimo',
-  'italic bold 10px Arimo',
-  '10px Tinos',
-  'bold 10px Tinos',
-  '10px Cousine',
-  'bold 10px Cousine',
-];
 
 let paletteCache: { base: string; palette: Promise<EdmPalette> } | null = null;
 
@@ -63,7 +51,10 @@ function useEdmDocument(base: string, path: string): LoadState {
       const [palette, file] = await Promise.all([loadPalette(base), source.load(path)]);
       const doc = parseDisplay(file.path, file.text);
       if (typeof document !== 'undefined' && document.fonts) {
-        await Promise.all(EDM_FONTS.map((f) => document.fonts.load(f).catch(() => [])));
+        // Load the fonts this screen draws with before it appears, so neither a
+        // screenshot nor an operator sees the fallback font first.
+        const fonts = [...screenFonts(doc), '9px Arimo'];
+        await Promise.all(fonts.map((f) => document.fonts.load(f).catch(() => [])));
       }
       return { status: 'ready', path: file.path, doc, palette };
     })().then(

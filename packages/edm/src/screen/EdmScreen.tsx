@@ -5,6 +5,7 @@
 
 import { useMemo } from 'react';
 import { parseColorSpec } from '../config/colors.js';
+import { cssFont, resolveFont } from '../config/fonts.js';
 import type { EdmPalette } from '../config/colors.js';
 import type { EdmMacros } from '../macros.js';
 import type { EdmDocument, EdmObject } from '../model.js';
@@ -39,6 +40,25 @@ export function screenSize(doc: EdmDocument): { w: number; h: number } {
   };
   if (w <= 0 || h <= 0) walk(doc.objects);
   return { w: Math.max(1, w), h: Math.max(1, h) };
+}
+
+/**
+ * CSS font shorthands of every font the document's objects use, for
+ * `document.fonts.load()` before the screen is shown (so neither a screenshot
+ * nor an operator ever sees the fallback font first).
+ */
+export function screenFonts(doc: EdmDocument): string[] {
+  // Objects without a font tag draw with the default font.
+  const out = new Set<string>([cssFont(resolveFont(undefined))]);
+  const walk = (objs: readonly EdmObject[]) => {
+    for (const o of objs) {
+      const tag = propStr(o.props, 'font');
+      if (tag !== undefined) out.add(cssFont(resolveFont(tag)));
+      if (o.children) walk(o.children);
+    }
+  };
+  walk(doc.objects);
+  return [...out];
 }
 
 export function EdmScreen({ doc, palette, pv, macros = {}, path, openDisplay }: EdmScreenProps) {

@@ -16,7 +16,7 @@ export type {
   EdmStaticColor,
   EdmAlarmColors,
 } from './config/colors.js';
-export { resolveFont, textWidth, parseFontTag, DEFAULT_FONT_TAG } from './config/fonts.js';
+export { resolveFont, textWidth, cssFont, parseFontTag, DEFAULT_FONT_TAG } from './config/fonts.js';
 export type { EdmFont } from './config/fonts.js';
 export { motifShadows } from './config/motif.js';
 export {
@@ -36,7 +36,7 @@ export { pvServiceConnection } from './pv/pvService.js';
 export { localConnection, parseLocDeclaration } from './pv/local.js';
 export type { LocalConnection } from './pv/local.js';
 export type { EdmPvConnection, EdmPvData, EdmPvListener, EdmPvType } from './pv/types.js';
-export { EdmScreen, screenSize } from './screen/EdmScreen.js';
+export { EdmScreen, screenFonts, screenSize } from './screen/EdmScreen.js';
 export type { EdmScreenProps } from './screen/EdmScreen.js';
 export { EdmScreenContext, useEdmScreen, useEdmPv } from './screen/context.js';
 export type { EdmOpenDisplayRequest, EdmScreenEnv } from './screen/context.js';

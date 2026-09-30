@@ -1,7 +1,7 @@
 import { AlarmSeverity } from '@slaclab/canopy-client';
 import { describe, expect, it } from 'vitest';
 import { EdmPalette, parseColorSpec } from './colors.js';
-import { resolveFont, textWidth } from './fonts.js';
+import { cssFont, resolveFont, textWidth } from './fonts.js';
 import { motifShadows } from './motif.js';
 
 const COLORS = `4 0 0
@@ -87,7 +87,12 @@ describe('parseColorSpec', () => {
 describe('fonts', () => {
   it('maps EDM tags to web fonts with the X bitmap metrics', () => {
     const f = resolveFont('helvetica-bold-r-14.0');
-    expect(f.family).toMatch(/^Arimo/);
+    // the X bitmap font itself as a pixel-outline web font, then the outline clone
+    expect(f.family).toBe(
+      "'edm helvetica-bold-r-14.0', Arimo, 'Liberation Sans', Helvetica, Arial, sans-serif"
+    );
+    expect(f.bitmap).toBe(true);
+    expect(cssFont(f)).toMatch(/^bold 14px 'edm helvetica-bold-r-14\.0', Arimo/);
     expect(f.weight).toBe('bold');
     expect(f.style).toBe('normal');
     expect([f.sizePx, f.ascent, f.descent, f.maxAscent]).toEqual([14, 13, 3, 14]);
@@ -99,7 +104,12 @@ describe('fonts', () => {
         0
       )
     );
-    expect(resolveFont('courier-medium-r-12.0').family).toMatch(/^Cousine/);
+    expect(resolveFont('courier-medium-r-12.0').family).toMatch(
+      /^'edm courier-medium-r-12\.0', Cousine/
+    );
+    // a size the X server scales has no bitmap font: outline family only
+    expect(resolveFont('helvetica-medium-r-72.0').bitmap).toBe(false);
+    expect(resolveFont('helvetica-medium-r-72.0').family).toMatch(/^Arimo/);
     expect(resolveFont('courier-medium-r-12.0').widths[65]).toBe(7);
   });
 

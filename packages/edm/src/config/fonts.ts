@@ -3,10 +3,15 @@
 // the X11 bitmap metrics EDM lays text out with.
 //
 // Text geometry (baseline, alignment offsets, per-glyph advances) always
-// comes from the X metrics, so strings land where EDM puts them; the web font
-// only supplies glyph shapes. Helvetica/Times/Courier map to the metric-
-// compatible Arimo/Tinos/Cousine (Liberation family).
+// comes from the X metrics, so strings land where EDM puts them. Glyph shapes
+// come from pixel-outline web fonts converted from the same X bitmap fonts
+// (fonts/bitmap.css, scripts/gen-bitmap-fonts.py), which reproduce EDM's
+// glyphs pixel for pixel at the font's pixel size. Tags without one (sizes the
+// X server scales, fallbacks) use the metric-compatible outline families
+// Arimo/Tinos/Cousine (Liberation), as does a browser that fails to load the
+// bitmap font.
 
+import { BITMAP_FONT_TAGS } from './bitmapFonts.generated.js';
 import { X_FONT_METRICS } from './xFontMetrics.generated.js';
 
 export interface XFontMetricsRaw {
@@ -41,6 +46,11 @@ export interface EdmFont {
   readonly widths: readonly number[];
   /** True when the tag had no X metrics of its own (EDM would not load it). */
   readonly fallback: boolean;
+  /**
+   * True when the first family is the pixel-outline web font of the X bitmap
+   * font itself (fonts/bitmap.css): glyphs then match EDM pixel for pixel.
+   */
+  readonly bitmap: boolean;
 }
 
 const FAMILIES: Record<string, string> = {
@@ -104,10 +114,12 @@ export function resolveFont(tag: string | undefined): EdmFont {
   const p = parseFontTag(key);
   const q = parseFontTag(resolvedTag);
   const fam = own ? (p?.family ?? 'helvetica') : (q?.family ?? 'helvetica');
+  const bitmap = BITMAP_FONT_TAGS.has(resolvedTag);
+  const outline = FAMILIES[fam] ?? FAMILIES.helvetica;
   const font: EdmFont = {
     tag: key,
     resolvedTag,
-    family: FAMILIES[fam] ?? FAMILIES.helvetica,
+    family: bitmap ? `'edm ${resolvedTag}', ${outline}` : outline,
     weight: (own ? p : q)?.weight === 'bold' ? 'bold' : 'normal',
     style: (own ? p : q)?.slant === 'r' ? 'normal' : 'italic',
     sizePx: m.pixel,
@@ -117,9 +129,17 @@ export function resolveFont(tag: string | undefined): EdmFont {
     maxDescent: m.maxDescent,
     widths: m.widths.split(',').map(Number),
     fallback: !own,
+    bitmap,
   };
   cache.set(key, font);
   return font;
+}
+
+/** CSS font shorthand of a font, e.g. for `document.fonts.load()`. */
+export function cssFont(font: EdmFont): string {
+  const style = font.style === 'italic' ? 'italic ' : '';
+  const weight = font.weight === 'bold' ? 'bold ' : '';
+  return `${style}${weight}${font.sizePx}px ${font.family}`;
 }
 
 /** XTextWidth: sum of per-char advances (chars beyond Latin-1 use '?'). */

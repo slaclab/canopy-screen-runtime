@@ -1,6 +1,8 @@
-/* Web fonts standing in for EDM's X11 bitmap fonts (metric-compatible
-   Liberation clones of Helvetica, Times and Courier). Glyph positions come
-   from the X metrics bundled with the package, so only glyph shapes differ. */
+/* EDM's X11 bitmap fonts as pixel-outline web fonts (one family per EDM font
+   tag), then the metric-compatible Liberation clones of Helvetica, Times and
+   Courier as the fallback for sizes without a bitmap. Glyph positions always
+   come from the X metrics bundled with the package. */
+@import './fonts/bitmap.css';
 @import '@fontsource/arimo/400.css';
 @import '@fontsource/arimo/400-italic.css';
 @import '@fontsource/arimo/700.css';
