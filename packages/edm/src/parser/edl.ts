@@ -169,10 +169,14 @@ function readCompound(cur: Cursor, sameLine: string): EdmBlock {
   const take = (raw: string): boolean => {
     const s = raw.trim();
     if (!s) return true; // EDM rejects blank lines inside a block; tolerate them
-    const body = s.length > 1 && s.endsWith('"') ? s.slice(0, -1) : s;
-    const r = unescape(body, true);
-    if (r.text || !r.closed) out.push(r.text);
-    return !r.closed;
+    // Content before the first unescaped `}` (EDM writes `}` on its own line;
+    // `value { "a" }` on one line is tolerated), minus a trailing quote.
+    const end = closingBrace(s);
+    let body = end < 0 ? s : s.slice(0, end).trimEnd();
+    if (body.length > 1 && body.endsWith('"')) body = body.slice(0, -1);
+    const text = unescape(body, true).text;
+    if (text || end < 0) out.push(text);
+    return end < 0;
   };
   if (sameLine.trim() && !take(sameLine)) return { lines: out };
   while (cur.i < cur.lines.length) {
@@ -184,11 +188,17 @@ function readCompound(cur: Cursor, sameLine: string): EdmBlock {
   return { lines: out };
 }
 
-/**
- * `\x` → `x`; in compound mode also drop the first unescaped `"` and stop at
- * an unescaped `}` (closed = true).
- */
-function unescape(s: string, compound: boolean): { text: string; closed: boolean } {
+/** Index of the first unescaped `}`, or -1. */
+function closingBrace(s: string): number {
+  for (let k = 0; k < s.length; k++) {
+    if (s[k] === '\\') k++;
+    else if (s[k] === '}') return k;
+  }
+  return -1;
+}
+
+/** `\x` → `x`; in a compound value also drop the first unescaped `"`. */
+function unescape(s: string, compound: boolean): { text: string } {
   let text = '';
   let escape = false;
   let foundQuote = false;
@@ -198,15 +208,13 @@ function unescape(s: string, compound: boolean): { text: string; closed: boolean
       text += ch;
     } else if (ch === '\\') {
       escape = true;
-    } else if (compound && ch === '}') {
-      return { text, closed: true };
     } else if (compound && ch === '"' && !foundQuote) {
       foundQuote = true;
     } else {
       text += ch;
     }
   }
-  return { text, closed: false };
+  return { text };
 }
 
 const clip = (s: string) => (s.length > 60 ? `${s.slice(0, 57)}...` : s);
