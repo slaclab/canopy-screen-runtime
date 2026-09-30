@@ -4,15 +4,17 @@
 //
 // Reserved query parameters (never macros): render, impl, look.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import type { EdmDocument, EdmOpenDisplayRequest } from '@slaclab/canopy-edm';
 import {
   EdmPalette,
   EdmPvLayer,
   EdmScreen,
+  calcConnection,
   httpDisplaySource,
   localConnection,
+  parseCalcList,
   parseDisplay,
   propStr,
   pvServiceConnection,
@@ -23,23 +25,34 @@ import { useServices } from '../services.js';
 
 export const EDL_RESERVED_PARAMS = new Set(['render', 'impl', 'look']);
 
-let paletteCache: { base: string; palette: Promise<EdmPalette> } | null = null;
+interface SiteConfig {
+  palette: EdmPalette;
+  /** calc.list: named CALC\\ expressions. */
+  calcs: Map<string, string>;
+}
 
-function loadPalette(base: string): Promise<EdmPalette> {
-  if (paletteCache?.base !== base) {
+let siteCache: { base: string; config: Promise<SiteConfig> } | null = null;
+
+function loadSite(base: string): Promise<SiteConfig> {
+  if (siteCache?.base !== base) {
     const source = httpDisplaySource(base);
-    paletteCache = { base, palette: source.config('colors.list').then((t) => EdmPalette.parse(t)) };
-    paletteCache.palette.catch(() => {
-      paletteCache = null;
+    const config = Promise.all([
+      source.config('colors.list').then((t) => EdmPalette.parse(t)),
+      // A site without a calc.list simply has no named calcs.
+      source.config('calc.list').then(parseCalcList, () => new Map<string, string>()),
+    ]).then(([palette, calcs]) => ({ palette, calcs }));
+    siteCache = { base, config };
+    config.catch(() => {
+      siteCache = null;
     });
   }
-  return paletteCache.palette;
+  return siteCache.config;
 }
 
 type LoadState =
   | { status: 'loading' }
   | { status: 'error'; title: string; detail?: string }
-  | { status: 'ready'; path: string; doc: EdmDocument; palette: EdmPalette };
+  | { status: 'ready'; path: string; doc: EdmDocument; site: SiteConfig };
 
 function useEdmDocument(base: string, path: string): LoadState {
   const key = `${base}|${path}`;
@@ -48,7 +61,7 @@ function useEdmDocument(base: string, path: string): LoadState {
     let cancelled = false;
     const source = httpDisplaySource(base);
     (async (): Promise<LoadState> => {
-      const [palette, file] = await Promise.all([loadPalette(base), source.load(path)]);
+      const [site, file] = await Promise.all([loadSite(base), source.load(path)]);
       const doc = parseDisplay(file.path, file.text);
       if (typeof document !== 'undefined' && document.fonts) {
         // Load the fonts this screen draws with before it appears, so neither a
@@ -56,7 +69,7 @@ function useEdmDocument(base: string, path: string): LoadState {
         const fonts = [...screenFonts(doc), '9px Arimo'];
         await Promise.all(fonts.map((f) => document.fonts.load(f).catch(() => [])));
       }
-      return { status: 'ready', path: file.path, doc, palette };
+      return { status: 'ready', path: file.path, doc, site };
     })().then(
       (state) => !cancelled && setLoaded({ key, state }),
       (err: unknown) =>
@@ -103,13 +116,16 @@ export function EdlPage({ edmBaseUrl }: { edmBaseUrl: string }) {
   }, [searchParams, windowId]);
 
   // One PV layer per displayed screen: EPICS through Hare (with its channel
-  // metadata) or the viewer's PV service, LOC\ locals scoped to this window.
+  // metadata) or the viewer's PV service, LOC\ locals scoped to this window,
+  // CALC\ expressions (calc.list names) evaluated in the page over the layer.
+  const calcs = state.status === 'ready' ? state.site.calcs : undefined;
   const layer = useMemo(() => {
     void path;
-    return new EdmPvLayer()
+    const l = new EdmPvLayer()
       .register('epics', pvServiceConnection(services.hare ?? services.pv))
       .register('loc', localConnection());
-  }, [services, path]);
+    return l.register('calc', calcConnection(l, calcs ?? new Map()));
+  }, [services, path, calcs]);
 
   useEffect(() => {
     window.__canopyEdm = { path, layer };
@@ -122,6 +138,13 @@ export function EdlPage({ edmBaseUrl }: { edmBaseUrl: string }) {
   useEffect(() => {
     document.title = title;
   }, [title]);
+
+  // Exit buttons and closeAction: a script may only close a tab it opened
+  // (related displays are), otherwise go back.
+  const closeDisplay = useCallback(() => {
+    window.close();
+    if (!window.closed && window.history.length > 1) window.history.back();
+  }, []);
 
   const openDisplay = useMemo(() => {
     const source = httpDisplaySource(edmBaseUrl);
@@ -137,6 +160,8 @@ export function EdlPage({ edmBaseUrl }: { edmBaseUrl: string }) {
           const url = `/edl/${found.path}${q.size ? `?${q}` : ''}`;
           if (win) win.location.href = url;
           else window.location.href = url;
+          // closeAction: EDM closes the referring display once the new one is up.
+          if (win && req.replace) closeDisplay();
         },
         (err: unknown) => {
           win?.close();
@@ -144,7 +169,7 @@ export function EdlPage({ edmBaseUrl }: { edmBaseUrl: string }) {
         }
       );
     };
-  }, [edmBaseUrl]);
+  }, [edmBaseUrl, closeDisplay]);
 
   if (state.status === 'loading')
     return <div className="edl-page edl-loading">Loading {path}…</div>;
@@ -153,11 +178,12 @@ export function EdlPage({ edmBaseUrl }: { edmBaseUrl: string }) {
     <div className="edl-page">
       <EdmScreen
         doc={state.doc}
-        palette={state.palette}
+        palette={state.site.palette}
         pv={layer}
         macros={macros}
         path={state.path}
         openDisplay={openDisplay}
+        closeDisplay={closeDisplay}
       />
     </div>
   );
