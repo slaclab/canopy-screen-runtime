@@ -1,8 +1,10 @@
 import { AlarmSeverity } from '@slaclab/canopy-client';
+import type { PVData, PVService } from '@slaclab/canopy-client';
 import { describe, expect, it } from 'vitest';
 import { calcConnection, parseCalcList, parseCalcName } from './calc.js';
 import { EdmPvLayer } from './layer.js';
 import { localConnection, parseLocDeclaration } from './local.js';
+import { pvServiceConnection } from './pvService.js';
 import type { EdmPvConnection, EdmPvData, EdmPvListener } from './types.js';
 
 const pv = (over: Partial<EdmPvData>): EdmPvData => ({
@@ -154,5 +156,38 @@ describe('LOC\\ PVs', () => {
     expect(bare().num).toBe(7);
     layer.put('LOC\\x=i:0', 2.5);
     expect(first()).toMatchObject({ text: '2.5', num: 2 });
+  });
+});
+
+describe('EPICS channels through a PVService', () => {
+  const read = (value: unknown, meta?: object): EdmPvData => {
+    let got: EdmPvData | undefined;
+    const service = {
+      subscribe: (_name: string, cb: (d: PVData) => void) => {
+        cb({ connected: true, value, severity: AlarmSeverity.NO_ALARM } as PVData);
+        return () => {};
+      },
+      put: () => {},
+      getMeta: () => meta,
+    } as unknown as PVService;
+    pvServiceConnection(service).subscribe('X', (d) => (got = d));
+    return got!;
+  };
+
+  it('reads a numeric waveform as its first element, like EDM text widgets', () => {
+    expect(read([7.5, 1, 2], { valueKind: 'waveform', precision: 2 })).toMatchObject({
+      type: 'double',
+      num: 7.5,
+    });
+    expect(read([], { valueKind: 'waveform', precision: null })).toMatchObject({
+      type: 'integer',
+      num: 0,
+    });
+  });
+
+  it('tells integers from doubles by the channel precision', () => {
+    expect(read(3, { valueKind: 'scalar', precision: null }).type).toBe('integer');
+    expect(read(3, { valueKind: 'scalar', precision: 0 }).type).toBe('double');
+    expect(read('abc').type).toBe('string');
   });
 });

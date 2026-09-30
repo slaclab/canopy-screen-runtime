@@ -22,27 +22,31 @@ export function pvServiceConnection(service: PVService): EdmPvConnection {
 
 function toEdm(d: PVData, meta: PVMetaDTO | undefined): EdmPvData {
   const choices = d.enumChoices ?? meta?.enumChoices ?? [];
+  const numeric = (): EdmPvType =>
+    meta ? (meta.precision == null ? 'integer' : 'double') : 'double';
+  // A numeric waveform reads as its first element: EDM's text widgets call
+  // get_double()/get_string() on the channel whatever its element count.
+  const v = Array.isArray(d.value) && typeof d.value[0] !== 'string' ? (d.value[0] ?? 0) : d.value;
   let type: EdmPvType;
   const kind = meta?.valueKind;
   if (kind === 'enum' || (kind === undefined && choices.length)) type = 'enum';
-  else if (kind === 'string' || typeof d.value === 'string') type = 'string';
-  else if (kind === 'waveform' || Array.isArray(d.value)) type = 'array';
-  else if (typeof d.value === 'number' || typeof d.value === 'boolean')
-    type = meta ? (meta.precision == null ? 'integer' : 'double') : 'double';
+  else if (kind === 'string' || typeof v === 'string') type = 'string';
+  else if (typeof v === 'number' || typeof v === 'boolean') type = numeric();
+  else if (Array.isArray(v)) type = 'array';
   else type = 'unknown';
 
   const num =
-    typeof d.value === 'number'
-      ? d.value
-      : typeof d.value === 'boolean'
-        ? Number(d.value)
-        : typeof d.value === 'string'
-          ? Number(d.value) || 0
+    typeof v === 'number'
+      ? v
+      : typeof v === 'boolean'
+        ? Number(v)
+        : typeof v === 'string'
+          ? Number(v) || 0
           : 0;
   let text = '';
   if (type === 'enum') text = choices[num] ?? '';
-  else if (typeof d.value === 'string') text = d.value;
-  else if (Array.isArray(d.value)) text = d.displayValue ?? '';
+  else if (typeof v === 'string') text = v;
+  else if (Array.isArray(v)) text = v.join('');
   return {
     connected: d.connected,
     type,
