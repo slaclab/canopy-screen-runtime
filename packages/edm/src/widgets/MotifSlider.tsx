@@ -7,6 +7,10 @@
 //     the value text shows the true number;
 //   - dragging the thumb writes the value under the pointer; a click in the
 //     trough steps by `increment` toward the click (nothing when it is 0);
+//   - showSavedValue adds the saved value in inverse video beside the value
+//     (at w/3 and 2w/3, or at a third and two thirds of a vertical scale): the
+//     savedValuePv's value, or without one the value at connect time. EDM's
+//     S and R keys (save / restore) are not reproduced;
 //   - nothing is drawn until the PV connects (a 1-px box in the disconnected
 //     colour after 2 s); bgAlarm colours the frame.
 // The scale itself is a Motif widget in EDM, so its trough, bevels and 30-px
@@ -37,8 +41,13 @@ export function MotifSlider({ obj }: EdmWidgetProps) {
   const literal = useExpanded(propStr(p, 'controlLabel') ?? '') ?? '';
   const put = useEdmPut();
   const phase = usePhase(controlPv ? [pv] : [undefined]);
+  const savedPv = pvProp(p, 'savedValuePv');
+  const saved = useEdmPv(savedPv, `${CLS}.savedValuePv`);
   const drag = useRef<{ grab: number } | null>(null);
   const [local, setLocal] = useState<number | null>(null);
+  // Without a savedValuePv the saved value is the control value at connect time.
+  const [first, setFirst] = useState<number | null>(null);
+  if (first === null && pv?.connected) setFirst(pv.num);
 
   if (phase !== 'init' || !pv) {
     return phase === 'unconnected' || !controlPv ? (
@@ -68,6 +77,12 @@ export function MotifSlider({ obj }: EdmWidgetProps) {
   const showLabel = propBool(p, 'showLabel');
   const showLimits = propBool(p, 'showLimits');
   const showValue = propBool(p, 'showValue');
+  const showSaved = showValue && propBool(p, 'showSavedValue');
+  const savedText = savedPv
+    ? saved?.connected
+      ? valueText(saved.num)
+      : ''
+    : valueText(first ?? pv.num);
   const labelType = propStr(p, 'controlLabelType') ?? 'literal';
   const label = labelType === 'literal' ? literal : name;
   const labelH = showLabel ? fh : 0;
@@ -132,12 +147,31 @@ export function MotifSlider({ obj }: EdmWidgetProps) {
     </>
   );
 
-  const text = (s: string, at: number, top: number, align: 'begin' | 'center' | 'end') => {
+  const text = (
+    s: string,
+    at: number,
+    top: number,
+    align: 'begin' | 'center' | 'end',
+    inverse = false
+  ) => {
     const sw = textWidth(font, s);
     const left = align === 'begin' ? at : align === 'center' ? at - idiv(sw, 2) : at - sw;
-    return <TextRun font={font} text={s} x={x + left} y={y + top + font.ascent} fill={fg} />;
+    return (
+      <>
+        {inverse ? <rect x={x + left} y={y + top} width={sw} height={fh} fill={fg} /> : null}
+        <TextRun
+          font={font}
+          text={s}
+          x={x + left}
+          y={y + top + font.ascent}
+          fill={inverse ? bgStatic : fg}
+        />
+      </>
+    );
   };
-  const mid = idiv(scaleH, 2) + scaleY - Math.trunc(0.5 * fh);
+  const half = Math.trunc(0.5 * fh);
+  const mid = idiv(scaleH, showSaved ? 3 : 2) + scaleY - half;
+  const mid2 = idiv(2 * scaleH, 3) + scaleY - half;
 
   const writable = pv.connected && pv.writable;
   const increment = propNum(p, 'increment', 0);
@@ -174,8 +208,13 @@ export function MotifSlider({ obj }: EdmWidgetProps) {
           : null}
         {showValue
           ? horizontal
-            ? text(valueText(value), idiv(w, 2), labelH, 'center')
+            ? text(valueText(value), idiv(w, showSaved ? 3 : 2), labelH, 'center')
             : text(valueText(value), scaleX, mid, 'end')
+          : null}
+        {showSaved
+          ? horizontal
+            ? text(savedText, idiv(2 * w, 3), labelH, 'center', true)
+            : text(savedText, scaleX, mid2, 'end', true)
           : null}
         <rect x={x + scaleX} y={y + scaleY} width={scaleW} height={scaleH} fill={bgStatic} />
         {bevel(tx, ty, tw, th, bs, ts)}

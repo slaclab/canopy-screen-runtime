@@ -414,4 +414,20 @@ describe('graphics', () => {
     // area = the whole 80-px object: 5/10 -> rint(40 + 0.5) = 40 (half to even), +1 for the outline
     expect([bar.getAttribute('x'), bar.getAttribute('width')]).toEqual(['10', '41']);
   });
+
+  it('motif slider: limits and value from the PV, saved value from its PV, steps on a trough click', () => {
+    const { puts, layer } = show(
+      obj(
+        'activeMotifSliderClass',
+        `${COLORS}\n2ndBgColor index 4\ncontrolPv "V"\nsavedValuePv "S"\nlimitsFromDb\nshowLimits\nshowValue\nshowSavedValue\nincrement 0.5`
+      ),
+      { V: pv({ num: 2.5 }), S: pv({ num: 4 }) }
+    );
+    expect(texts()).toEqual(['0', '10', '2.50', '4.00']);
+    expect(layer.subscriptions().map((x) => x.by)).toContain('activeMotifSliderClass.savedValuePv');
+    const slider = screen.getByRole('slider');
+    slider.getBoundingClientRect = () => ({ left: 0, right: 78, top: 0, bottom: 14 }) as DOMRect;
+    fireEvent.mouseDown(slider, { button: 0, clientX: 70, clientY: 5 });
+    expect(puts).toEqual([['V', 3]]);
+  });
 });
