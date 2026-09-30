@@ -186,6 +186,24 @@ describe('EdmScreen', () => {
     expect(layer.subscriptions()).toEqual([]);
   });
 
+  it('keeps the members of a hidden group subscribed, like EDM', () => {
+    const { layer } = show(
+      HEAD +
+        `object activeGroupClass\nbeginObjectProperties\nx 0\nbeginGroup\n` +
+        obj('TextupdateClass', 'x 0\ny 0\nw 50\nh 20\ncontrolPv "INNER"') +
+        `endGroup\nvisPv "LOC\\\\show=i:0"\nvisMin "1"\nvisMax "2"\nendObjectProperties\n`,
+      { INNER: pv({ num: 1 }) }
+    );
+    expect(
+      layer
+        .subscriptions()
+        .map((s) => s.by)
+        .sort()
+    ).toEqual(['TextupdateClass.controlPv', 'activeGroupClass.visPv']);
+    const group = document.querySelector<HTMLElement>('[data-edm-class=activeGroupClass]')!;
+    expect(group.style.display).toBe('none');
+  });
+
   it('records every subscription with its class and property, served or not', () => {
     const { layer } = show(
       HEAD +
