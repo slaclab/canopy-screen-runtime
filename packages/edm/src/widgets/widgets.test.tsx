@@ -13,6 +13,8 @@ import { raisedBevel } from './button.js';
 import { registerEdmBuiltins } from './builtins.js';
 import { choiceLayout } from './MenuChoice.js';
 import { byteBoundaries } from './Shapes.js';
+import { decodeGif } from './gif.js';
+import { imageName, profileImage } from './Images.js';
 import { mmvMarker } from './Slac.js';
 import { slacBarExtent } from './SlacBar.js';
 import { messageValue } from './Buttons.js';
@@ -507,5 +509,36 @@ describe('SLAC widgets', () => {
     for (const [x, y] of px) rows.set(y, [...(rows.get(y) ?? []), x]);
     const half = [...rows.keys()].sort((a, b) => a - b).map((y) => (rows.get(y)!.length - 1) / 2);
     expect(half).toEqual([0, 4, 5, 5, 4, 4, 3, 2, 2, 1, 1, 0]);
+  });
+});
+
+describe('images', () => {
+  it('adds the extension only when the name has none', () => {
+    expect(imageName('temp_in20_gun_rear', '.gif')).toBe('temp_in20_gun_rear.gif');
+    expect(imageName('xta_sche1.GIF', '.gif')).toBe('xta_sche1.GIF');
+    expect(imageName('images.d/LI30y', '.png')).toBe('images.d/LI30y.png');
+  });
+
+  it('decodes a GIF: logical screen, global table, first image', () => {
+    const bytes = Uint8Array.from(
+      atob('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'),
+      (c) => c.charCodeAt(0)
+    );
+    const gif = decodeGif(bytes);
+    expect([gif.width, gif.height]).toEqual([1, 1]);
+    expect(gif.palette).toEqual([
+      [0, 0, 0],
+      [255, 255, 255],
+    ]);
+    expect([...gif.indices]).toEqual([0]);
+  });
+
+  it('profile monitor: implausible sizes keep the image, short data leave it black', () => {
+    expect(profileImage([1, 2, 3], 20000, 0, 8, 4, 4)).toBeNull();
+    const black = profileImage([1, 2, 3], 640, 0, 8, 4, 4)!;
+    expect(black.every((v, i) => (i % 4 === 3 ? v === 255 : v === 0))).toBe(true);
+    // 2 x 2 data of 12-bit levels into a 2 x 2 box: >> 4
+    const img = profileImage([0, 4095, 16, 32], 2, 2, 12, 2, 2)!;
+    expect([img[0], img[4], img[8], img[12]]).toEqual([0, 255, 1, 2]);
   });
 });

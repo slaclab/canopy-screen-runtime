@@ -22,6 +22,8 @@ export interface EdmPvData {
   readonly upperLimit: number;
   /** False when the channel refuses writes (EDM then shows its "no" cursor). */
   readonly writable: boolean;
+  /** Every element of a numeric waveform (graphs, images); absent for scalars. */
+  readonly values?: readonly number[];
 }
 
 export type EdmPvListener = (data: EdmPvData) => void;

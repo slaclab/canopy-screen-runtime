@@ -160,5 +160,8 @@ function toEdm(d: PVData, meta: PVMetaDTO | undefined): EdmPvData {
     lowerLimit: d.lowerLimit,
     upperLimit: d.upperLimit,
     writable: meta?.writable ?? true,
+    ...(Array.isArray(d.value) && typeof d.value[0] !== 'string'
+      ? { values: (d.value as readonly unknown[]).map((e) => Number(e)) }
+      : {}),
   };
 }
