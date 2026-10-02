@@ -224,3 +224,58 @@ export function usePhase(pvs: readonly (EdmPvData | undefined)[]): EdmPhase {
   }, []);
   return latched || all ? 'init' : timedOut ? 'unconnected' : 'waiting';
 }
+
+/**
+ * Live data of several EDM PV strings at once (a graph's traces), in order;
+ * an empty string subscribes nothing. `by` names the subscriber per entry.
+ */
+export function useEdmPvList(
+  raws: readonly string[],
+  by: readonly string[]
+): readonly (EdmPvData | undefined)[] {
+  const env = useEdmScreen();
+  const key = raws.map((r, i) => `${r}\u0000${by[i] ?? ''}`).join('\u0001');
+  const store = useMemo(
+    () =>
+      new PvListStore(
+        key
+          ? key.split('\u0001').map((k) => {
+              const [raw, b] = k.split('\u0000');
+              const r = raw.trim();
+              return new PvStore(
+                env.pv,
+                r,
+                r ? expandMacros(r, env.macros) : '',
+                b,
+                env.scope,
+                env.freeze
+              );
+            })
+          : []
+      ),
+    [env.pv, env.macros, env.scope, env.freeze, key]
+  );
+  return useSyncExternalStore(store.subscribe, store.get, store.get);
+}
+
+class PvListStore {
+  private readonly stores: readonly PvStore[];
+  private snapshot: readonly (EdmPvData | undefined)[];
+
+  constructor(stores: readonly PvStore[]) {
+    this.stores = stores;
+    this.snapshot = stores.map(() => undefined);
+  }
+
+  subscribe = (onChange: () => void) => {
+    const unsubs = this.stores.map((s) =>
+      s.subscribe(() => {
+        this.snapshot = this.stores.map((t) => t.get());
+        onChange();
+      })
+    );
+    return () => unsubs.forEach((u) => u());
+  };
+
+  get = () => this.snapshot;
+}
