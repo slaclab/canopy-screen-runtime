@@ -50,10 +50,10 @@ function EtchedFrame(props: {
   const { x, y, w, h, top, bottom } = props;
   const ring = (i: number, tl: string | undefined, br: string | undefined) => (
     <>
-      <rect x={x + i} y={y + i} width={w - 1 - 2 * i} height={1} fill={tl} />
-      <rect x={x + i} y={y + i} width={1} height={h - 1 - 2 * i} fill={tl} />
-      <rect x={x + i} y={y + h - 1 - i} width={w - 2 * i} height={1} fill={br} />
-      <rect x={x + w - 1 - i} y={y + i} width={1} height={h - 2 * i} fill={br} />
+      <rect x={x + i} y={y + i} width={Math.max(0, w - 1 - 2 * i)} height={1} fill={tl} />
+      <rect x={x + i} y={y + i} width={1} height={Math.max(0, h - 1 - 2 * i)} fill={tl} />
+      <rect x={x + i} y={y + h - 1 - i} width={Math.max(0, w - 2 * i)} height={1} fill={br} />
+      <rect x={x + w - 1 - i} y={y + i} width={1} height={Math.max(0, h - 2 * i)} fill={br} />
     </>
   );
   return (

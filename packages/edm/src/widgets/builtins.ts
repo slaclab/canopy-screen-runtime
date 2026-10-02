@@ -4,8 +4,10 @@ import { Bar } from './Bar.js';
 import { Button, ExitButton, MessageButton, ShellCmd } from './Buttons.js';
 import { Group } from './Group.js';
 import { GifImageView, PngImage, TwoDProfileMonitor } from './Images.js';
+import { Indicator } from './Indicator.js';
 import { Line } from './Line.js';
 import { ChoiceButton, MenuButton } from './MenuChoice.js';
+import { Meter } from './Meter.js';
 import { MotifSlider, makeMotifSlider } from './MotifSlider.js';
 import { RadioBox } from './Radio.js';
 import { RampButton, UpdownButton } from './RampUpdown.js';
@@ -56,6 +58,8 @@ export function registerEdmBuiltins(): void {
   registerEdmWidget('activePngClass', PngImage);
   registerEdmWidget('cfcf6c8a_dbeb_11d2_8a97_00104b8742df', GifImageView);
   registerEdmWidget('TwoDProfileMonitorClass', TwoDProfileMonitor);
+  registerEdmWidget('activeIndicatorClass', Indicator);
+  registerEdmWidget('activeMeterClass', Meter);
   // In .edl files, but registered by no EDM library: EDM draws nothing.
   registerEdmWidget('activeVsBarClass', Unregistered);
 }

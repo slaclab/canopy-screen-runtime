@@ -58,6 +58,8 @@ export interface BarScaleArgs {
   readonly sy: number;
   readonly fg: string | undefined;
   readonly bg: string | undefined;
+  /** Tick text (default C %g, and "0" for zero); the indicator uses its scale format. */
+  readonly format?: (v: number) => string;
 }
 
 /** Lines and labels of a bar scale; nothing unless shown with labelTicks >= 1. */
@@ -89,7 +91,9 @@ export function barScale(a: BarScaleArgs): { ticks: XLine[]; labels: ReactNode[]
   const label = (val: number, k: number) => {
     const c = tick(val, TL);
     const shown = pos ? val : -val;
-    const text = Math.abs(val) / Math.abs(inc) < 1e-5 ? '0' : cFormat('%g', shown);
+    const fmt = a.format ?? ((v: number) => cFormat('%g', v));
+    const zero = a.format ? a.format(0) : '0';
+    const text = Math.abs(val) / Math.abs(inc) < 1e-5 ? zero : fmt(shown);
     labels.push(
       horizontal ? (
         <ScaleText

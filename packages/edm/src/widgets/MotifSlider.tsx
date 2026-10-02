@@ -240,14 +240,14 @@ function MotifSliderBody({ obj, cls: CLS }: EdmWidgetProps & { cls: string }) {
               x={thumb.x + idiv(thumb.w, 2) - 1}
               y={thumb.y + 2}
               width={1}
-              height={thumb.h - 4}
+              height={Math.max(0, thumb.h - 4)}
               fill={bs}
             />
             <rect
               x={thumb.x + idiv(thumb.w, 2)}
               y={thumb.y + 2}
               width={1}
-              height={thumb.h - 4}
+              height={Math.max(0, thumb.h - 4)}
               fill={ts}
             />
           </>
@@ -256,14 +256,14 @@ function MotifSliderBody({ obj, cls: CLS }: EdmWidgetProps & { cls: string }) {
             <rect
               x={thumb.x + 2}
               y={thumb.y + idiv(thumb.h, 2) - 1}
-              width={thumb.w - 4}
+              width={Math.max(0, thumb.w - 4)}
               height={1}
               fill={bs}
             />
             <rect
               x={thumb.x + 2}
               y={thumb.y + idiv(thumb.h, 2)}
-              width={thumb.w - 4}
+              width={Math.max(0, thumb.w - 4)}
               height={1}
               fill={ts}
             />
