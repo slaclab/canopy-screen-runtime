@@ -28,6 +28,11 @@ export interface ViewerServices {
    * metadata (the EDM renderer tells integer from double records by PREC).
    */
   hare: HarePVService | null;
+  /**
+   * A fresh, unconnected Hare service (hare mode): the EDM renderer opens its
+   * own sockets so one subscribe message carries a whole screen's channels.
+   */
+  createHare: (() => HarePVService) | null;
 }
 
 export function createServices(config: ViewerConfig): ViewerServices {
@@ -37,10 +42,12 @@ export function createServices(config: ViewerConfig): ViewerServices {
   locals.connect();
 
   if (config.pvMode === 'hare') {
-    const hare = new HarePVService({
-      url: `${config.canopyBaseUrl.replace(/^http/i, 'ws')}/hare/v1/ws/pvs`,
-      apiKey: config.canopyApiKey,
-    });
+    const createHare = () =>
+      new HarePVService({
+        url: `${config.canopyBaseUrl.replace(/^http/i, 'ws')}/hare/v1/ws/pvs`,
+        apiKey: config.canopyApiKey,
+      });
+    const hare = createHare();
     const pv = new RoutedPVService({ 'loc://': locals }, hare);
     pv.connect();
     const fox = new FoxFormulaService({
@@ -53,12 +60,19 @@ export function createServices(config: ViewerConfig): ViewerServices {
       formulas: createLocalAwareFormulaSubscriber(locals, createFoxFormulaSubscriber(fox)),
       locals,
       hare,
+      createHare,
     };
   }
 
   const pv = new RoutedPVService({ 'loc://': locals }, new MockPVService());
   pv.connect();
-  return { pv, formulas: createLocalAwareFormulaSubscriber(locals, null), locals, hare: null };
+  return {
+    pv,
+    formulas: createLocalAwareFormulaSubscriber(locals, null),
+    locals,
+    hare: null,
+    createHare: null,
+  };
 }
 
 export const ServicesContext = createContext<ViewerServices | null>(null);

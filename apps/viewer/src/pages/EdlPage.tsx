@@ -11,6 +11,7 @@ import {
   EdmPalette,
   EdmPvLayer,
   EdmScreen,
+  batchedPvServiceConnection,
   calcConnection,
   httpDisplaySource,
   localConnection,
@@ -115,15 +116,17 @@ export function EdlPage({ edmBaseUrl }: { edmBaseUrl: string }) {
     return out;
   }, [searchParams, windowId]);
 
-  // One PV layer per displayed screen: EPICS through Hare (with its channel
-  // metadata) or the viewer's PV service, LOC\ locals scoped to this window,
-  // CALC\ expressions (calc.list names) evaluated in the page over the layer.
+  // One PV layer per displayed screen: EPICS through Hare (its own sockets,
+  // with channel metadata) or the viewer's PV service, LOC\ locals scoped to
+  // this window, CALC\ expressions (calc.list names) evaluated in the page
+  // over the layer.
   const calcs = state.status === 'ready' ? state.site.calcs : undefined;
   const layer = useMemo(() => {
     void path;
-    const l = new EdmPvLayer()
-      .register('epics', pvServiceConnection(services.hare ?? services.pv))
-      .register('loc', localConnection());
+    const epics = services.createHare
+      ? batchedPvServiceConnection(services.createHare)
+      : pvServiceConnection(services.hare ?? services.pv);
+    const l = new EdmPvLayer().register('epics', epics).register('loc', localConnection());
     return l.register('calc', calcConnection(l, calcs ?? new Map()));
   }, [services, path, calcs]);
 

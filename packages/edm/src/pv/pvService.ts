@@ -20,6 +20,105 @@ export function pvServiceConnection(service: PVService): EdmPvConnection {
   };
 }
 
+/** A Hare-like service: its own socket, connected on demand, with channel metadata. */
+export type EdmHareLike = WithMeta & { connect(): void; disconnect(): void };
+
+interface Wave {
+  readonly svc: EdmHareLike;
+  refs: number;
+  started: boolean;
+}
+
+/**
+ * EPICS channels through Hare, one socket per wave of subscriptions.
+ *
+ * Hare reads a socket's subscribe messages one at a time and answers each
+ * (with the channel metadata that tells integers from doubles) only when
+ * every channel in it has connected or its connection timeout (10 s) has
+ * passed; live channels in the meantime get values without metadata. One
+ * message per channel would queue every channel behind each dead one. So the
+ * channels a render asks for share one socket and one message, and channels
+ * that report a value there before their metadata (live ones held back by a
+ * dead neighbour) are asked for again on a fresh socket, which answers at
+ * once. Values without metadata are never shown: EDM's formatting needs it.
+ */
+export function batchedPvServiceConnection(
+  create: () => EdmHareLike,
+  windowMs = 0
+): EdmPvConnection {
+  let collecting: Wave | null = null;
+  let rescuing: Wave | null = null;
+  let writer: EdmHareLike | null = null;
+
+  const wave = (rescue: boolean): Wave => {
+    const open = rescue ? rescuing : collecting;
+    if (open) return open;
+    const w: Wave = { svc: create(), refs: 0, started: false };
+    if (rescue) rescuing = w;
+    else collecting = w;
+    setTimeout(() => {
+      if (rescue ? rescuing === w : collecting === w) {
+        if (rescue) rescuing = null;
+        else collecting = null;
+      }
+      w.started = true;
+      if (w.refs > 0) w.svc.connect();
+    }, windowMs);
+    return w;
+  };
+  const release = (w: Wave) => {
+    w.refs--;
+    if (w.refs === 0 && w.started) w.svc.disconnect();
+  };
+
+  return {
+    subscribe(name, listener) {
+      let closed = false;
+      let rescue: { w: Wave; unsub: () => void } | null = null;
+      const first = wave(false);
+      first.refs++;
+      let unsubFirst: (() => void) | null = null;
+      const dropFirst = () => {
+        if (!unsubFirst) return;
+        unsubFirst();
+        unsubFirst = null;
+        release(first);
+      };
+      unsubFirst = first.svc.subscribe(name, (d) => {
+        if (closed || rescue) return;
+        const meta = first.svc.getMeta?.(name);
+        if (meta || !d.connected) {
+          listener(toEdm(d, meta));
+          return;
+        }
+        // A value without metadata: ask again on a fresh socket.
+        const w = wave(true);
+        w.refs++;
+        const unsub = w.svc.subscribe(name, (r) => {
+          if (!closed) listener(toEdm(r, w.svc.getMeta?.(name)));
+        });
+        rescue = { w, unsub };
+        dropFirst();
+      });
+      // (A service that answers synchronously may already have rescued it.)
+      if (rescue) dropFirst();
+      return () => {
+        closed = true;
+        dropFirst();
+        if (rescue) {
+          rescue.unsub();
+          release(rescue.w);
+          rescue = null;
+        }
+      };
+    },
+    put(name, value) {
+      writer ??= create();
+      writer.put(name, value);
+    },
+  };
+}
+
 function toEdm(d: PVData, meta: PVMetaDTO | undefined): EdmPvData {
   const choices = d.enumChoices ?? meta?.enumChoices ?? [];
   const numeric = (): EdmPvType =>

@@ -1,10 +1,10 @@
 import { AlarmSeverity } from '@slaclab/canopy-client';
 import type { PVData, PVService } from '@slaclab/canopy-client';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { calcConnection, parseCalcList, parseCalcName } from './calc.js';
 import { EdmPvLayer } from './layer.js';
 import { localConnection, parseLocDeclaration } from './local.js';
-import { pvServiceConnection } from './pvService.js';
+import { batchedPvServiceConnection, pvServiceConnection } from './pvService.js';
 import type { EdmPvConnection, EdmPvData, EdmPvListener } from './types.js';
 
 const pv = (over: Partial<EdmPvData>): EdmPvData => ({
@@ -189,5 +189,61 @@ describe('EPICS channels through a PVService', () => {
     expect(read(3, { valueKind: 'scalar', precision: null }).type).toBe('integer');
     expect(read(3, { valueKind: 'scalar', precision: 0 }).type).toBe('double');
     expect(read('abc').type).toBe('string');
+  });
+});
+
+describe('batched Hare connection', () => {
+  // A stand-in for one Hare socket: values for live channels at once without
+  // metadata when a dead channel shares the subscribe message, metadata later.
+  class FakeHare {
+    static all: FakeHare[] = [];
+    readonly subs = new Map<string, (d: PVData) => void>();
+    connected = false;
+    meta = new Map<string, object>();
+    constructor() {
+      FakeHare.all.push(this);
+    }
+    subscribe(name: string, cb: (d: PVData) => void) {
+      this.subs.set(name, cb);
+      return () => this.subs.delete(name);
+    }
+    getMeta(name: string) {
+      return this.meta.get(name) as never;
+    }
+    connect() {
+      this.connected = true;
+    }
+    disconnect() {
+      this.connected = false;
+    }
+    put() {}
+    send(name: string, value: number, withMeta: boolean) {
+      if (withMeta) this.meta.set(name, { precision: 2 });
+      this.subs.get(name)?.({ connected: true, value, severity: AlarmSeverity.NO_ALARM } as PVData);
+    }
+  }
+
+  it('one socket per render; live channels held back by a dead one are asked again', () => {
+    vi.useFakeTimers();
+    FakeHare.all = [];
+    const conn = batchedPvServiceConnection(() => new FakeHare() as never);
+    const got: Record<string, EdmPvData[]> = { A: [], B: [] };
+    conn.subscribe('A', (d) => got.A.push(d));
+    conn.subscribe('B', (d) => got.B.push(d));
+    expect(FakeHare.all).toHaveLength(1);
+    vi.advanceTimersByTime(1);
+    const [first] = FakeHare.all;
+    expect(first.connected).toBe(true);
+    first.send('A', 3, false); // a value without metadata: not shown, asked again
+    expect(got.A).toEqual([]);
+    expect(first.subs.has('A')).toBe(false);
+    vi.advanceTimersByTime(1);
+    const rescue = FakeHare.all[1];
+    expect(rescue.connected).toBe(true);
+    rescue.send('A', 3, true);
+    expect(got.A.map((d) => [d.num, d.type])).toEqual([[3, 'double']]);
+    first.send('B', 5, true); // with metadata: shown from the first socket
+    expect(got.B.map((d) => d.num)).toEqual([5]);
+    vi.useRealTimers();
   });
 });
