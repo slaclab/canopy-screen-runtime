@@ -17,6 +17,9 @@ The layout follows Diamond's cs-web-lib, so the package could move upstream late
                                    ▼
   <EdmScreen> ── widget registry ──► one component per EDM class, each in an error
        │                             boundary; unknown classes render a placeholder
+       ├── EdmWindow      one EDM window: its macros (+ menuMux layer), path,
+       │                  display colours; embedded displays are windows too
+       ├── docCache       files objects name at run time (pips, symbols), loaded once
        ├── EdmPalette     colors.list: statics, rule colours (84–114), alarm block
        ├── resolveFont    EDM font tag → the X11 bitmap font as a web font, plus its metrics
        └── EdmPvLayer     connection registry by PV scheme
@@ -28,11 +31,18 @@ The layout follows Diamond's cs-web-lib, so the package could move upstream late
   itself with `registerEdmBuiltins()`. Class names include suffixes
   (`activeXTextDspClass:noedit`).
 - **PV connections** (`new EdmPvLayer().register(scheme, connection)`): the viewer
-  routes `epics` through `pvServiceConnection(HarePVService)`, `loc` through
+  routes `epics` through `batchedPvServiceConnection(createHare)` (Hare sockets per
+  wave of subscriptions, see below), `loc` through
   `localConnection()` and `calc` through `calcConnection(layer, calcs)`. The layer
-  records every subscription (`subscriptions()`, plus `stats()`), which the harness
+  records every subscription (`subscriptions()`, plus `stats()`) with its scope ('' for
+  the displayed screen, else the embedded file it came through), which the harness
   uses to check PV parity. Writes go through `layer.put()` (Hare's REST PUT for EPICS
   channels).
+- **Hare batching**: Hare answers a socket's subscribe messages one at a time and holds
+  each until all its channels are seeded (about 10 s per dead channel,
+  slaclab/canopy#129). The EDM page therefore subscribes a whole render in one message
+  on its own socket and re-asks live channels held back by a dead neighbour on a fresh
+  one.
 
 ## Fidelity approach
 
@@ -59,15 +69,20 @@ The layout follows Diamond's cs-web-lib, so the package could move upstream late
   against EDM screenshots. Motif text-field bevels use Motif's shadow-colour
   calculation.
 - **Number formatting** ports EPICS `cvtDoubleToString` and C `printf` semantics.
+- **Motif widgets** (text fields, sliders, radio boxes, embedded-display frames, tables)
+  are sub-windows of an XmDrawingArea with 10-px margins: placed at x or y below 10
+  they move to 10, and they cover whatever the display draws in their box.
+- **Blinking colours**: a colors.list static with two RGB triplets is a CSS custom
+  property the screen root switches every `blinkms` (EDM: 250..2000 ms, default 500);
+  harnesses hold the phase with `globalThis.__canopyEdmBlinkPhase` or
+  `freezeEdmBlink()`.
 
-Two EDM behaviours are not reproduced:
+One EDM behaviour is not reproduced:
 
 - **Partial repaints.** When a dynamic object updates, EDM repaints the region 5 px
   around it with only the objects that intersect the object's own box, which erases
   the edges of close neighbours (a missing bevel row, a clipped alarm border) until
   the next full expose. The renderer draws every object whole.
-- **Blinking colours.** A colors.list static with two RGB triplets blinks in EDM every
-  `blinkms`. The palette parses both, but objects show the first.
 
 ## Implemented classes
 
@@ -100,7 +115,29 @@ M1 (the next twelve classes by corpus use, plus writes and pseudo-PVs):
 | activeMotifSliderClass   | label/limits/value rows, Motif scale look, drag and increment writes                                            |
 | TextentryClass           | Textupdate look with in-place editing                                                                           |
 
-Every other class renders a visible `data-testid="widget-placeholder"` box that names
+M2 (every other class of the golden set):
+
+| Class                                             | Notes                                                                                                                                    |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| activePipClass                                    | stringPV / file / menu sources, the child as its own window (macros, `$(!W)`), centre / setSize, missing file as EDM's 50 x 50 dummy     |
+| activeSymbolClass, anaSymbolClass                 | the symbol file's groups as states (moved, resized, rotated/flipped), masked/shifted multi-PV values, every state's PVs live; x/y motion |
+| menuMuxClass                                      | menu-button look; each window layers its muxes' item macros after its own                                                                |
+| xyGraphClass, mzxyGraphClass                      | XY / chronological traces, fromUser / fromPv / AutoScale axes with EDM's rounding and refits, dateTime axes, symbols, plot mode          |
+| activeSlacBarClass                                | SLAC's bar: origin-relative fill, the vertical origin line across the object                                                             |
+| activeIndicatorClass, activeMeterClass            | pointer (arrowheads out of range); radial meter with EDM's sizing, ticks and needle                                                      |
+| activeSliderClass, activeTriumfSliderClass        | EDM's own slider (etched frame, wedges, save/restore, auto-repeat); TRIUMF's Motif slider                                                |
+| activeRampButtonClass, activeUpdownButtonClass    | ramping toward finalValuePv; fine/coarse steps and the Save/Restore strip                                                                |
+| activeRadioButtonClass                            | the Motif radio box, clipped to the object                                                                                               |
+| activePngClass, GIF (cfcf6c8a…)                   | 1:1 at x, y, transparency as the display background; GIF: global table, lowest bit cleared, last entry transparent                       |
+| TwoDProfileMonitorClass                           | black until data; grey levels fitted with aspect kept                                                                                    |
+| RegTextupdateClass, activeXRegTextClass           | `regExpr` (group 1) as a JS RegExp; RegTextupdate stays visible in hidden groups                                                         |
+| multiLineTextUpdateClass, multiLineTextEntryClass | Motif text, char waveforms only, in-place multi-line editing                                                                             |
+| activeMessageBoxClass                             | frame, Clear button, scrolled text with Motif scrollbars; the first value is dropped                                                     |
+| activeTableClass, activeCoefTableClass            | EDM's "could not be opened" cell (the file is on the EDM host); label / value rows from an array PV                                      |
+| mmvClass, activeFreezeButtonClass                 | 60-degree pie markers dragged to write; the window freeze that holds PV updates                                                          |
+| activeVsBarClass                                  | registered by no EDM library, so EDM draws nothing; neither does the renderer (`data-edm-unregistered`)                                  |
+
+Any other class renders a visible `data-testid="widget-placeholder"` box that names
 it.
 
 ### Pseudo-PVs
