@@ -13,19 +13,16 @@
 //     box in the disconnected colour).
 // Written from that behaviour; no EDM code is copied.
 
-import type { ReactNode } from 'react';
-import type { EdmFont } from '../config/fonts.js';
 import { resolveFont, textWidth } from '../config/fonts.js';
 import { cFormat } from '../format.js';
 import { propBool, propStr } from '../model.js';
 import { useEdmPv, useEdmScreen, useExpanded, usePhase } from '../screen/context.js';
+import { ScaleText, barScale } from './barScale.js';
 import { XLines } from './button.js';
-import type { XLine } from './button.js';
 import type { EdmWidgetProps } from './registry.js';
 import {
   SHOWS_IN_HIDDEN_GROUP,
   SvgBox,
-  TextRun,
   XRectOutline,
   atof,
   atol,
@@ -38,36 +35,6 @@ import {
 } from './shared.js';
 
 const CLS = 'activeBarClass';
-
-/** A string with its top at `top`, aligned begin/center/end on `at`. */
-function ScaleText({
-  font,
-  text,
-  at,
-  top,
-  align,
-  fill,
-  bg,
-}: {
-  font: EdmFont;
-  text: string;
-  at: number;
-  top: number;
-  align: 'begin' | 'center' | 'end';
-  fill: string | undefined;
-  bg?: string;
-}) {
-  const tw = textWidth(font, text);
-  const left = align === 'begin' ? at : align === 'center' ? at - idiv(tw, 2) : at - tw;
-  return (
-    <>
-      {bg ? (
-        <rect x={left} y={top} width={tw} height={font.ascent + font.descent} fill={bg} />
-      ) : null}
-      <TextRun font={font} text={text} x={left} y={top + font.ascent} fill={fill} />
-    </>
-  );
-}
 
 export function Bar({ obj }: EdmWidgetProps) {
   const { palette } = useEdmScreen();
@@ -225,83 +192,23 @@ export function Bar({ obj }: EdmWidgetProps) {
   const bg = palette.spec(colorSpec(p, 'bgColor'));
 
   // Scale.
-  const scale: ReactNode[] = [];
-  const ticks: XLine[] = [];
-  const labelTicks = atol(propStr(p, 'labelTicks'));
-  if (showScale && labelTicks >= 1) {
-    const majorTicks = atol(propStr(p, 'majorTicks'));
-    const minorTicks = atol(propStr(p, 'minorTicks'));
-    const TL = Math.trunc(0.8 * Math.abs(fh - 2));
-    const TM = Math.trunc(0.7 * TL);
-    const Tm = Math.trunc(0.4 * TL);
-    const lo = pos ? readMin : -readMin;
-    const hi = pos ? readMax : -readMax;
-    const inc = (hi - lo) / labelTicks;
-    const sy = y + h - 2 * fh - 1;
-    const ax = areaX - 4;
-    const at = (val: number) =>
-      horizontal
-        ? Math.trunc(rint(((val - lo) * areaW) / (hi - lo) + areaX))
-        : Math.trunc(rint(areaY - ((val - lo) * areaH) / (hi - lo)));
-    const tick = (val: number, len: number) => {
-      const c = at(val);
-      ticks.push(horizontal ? [c, sy, c, sy + len, fgStatic] : [ax - len, c, ax, c, fgStatic]);
-      return c;
-    };
-    const label = (val: number, k: number) => {
-      const c = tick(val, TL);
-      const shown = pos ? val : -val;
-      const text = Math.abs(val) / Math.abs(inc) < 1e-5 ? '0' : cFormat('%g', shown);
-      scale.push(
-        horizontal ? (
-          <ScaleText
-            key={k}
-            font={font}
-            text={text}
-            at={c}
-            top={sy + Math.trunc(1.2 * TL)}
-            align="center"
-            fill={fgStatic}
-            bg={bg}
-          />
-        ) : (
-          <ScaleText
-            key={k}
-            font={font}
-            text={text}
-            at={ax - Math.trunc(1.2 * TL)}
-            top={c - Math.trunc(0.5 * fh)}
-            align="end"
-            fill={fgStatic}
-            bg={bg}
-          />
-        )
-      );
-    };
-    ticks.push(
-      horizontal
-        ? [areaX, sy, areaX + areaW, sy, fgStatic]
-        : [ax, areaY - areaH, ax, areaY, fgStatic]
-    );
-    let val = lo;
-    let k = 0;
-    const inner = (start: number) => {
-      if (majorTicks <= 0) return;
-      const mInc = inc / majorTicks;
-      for (let m = 0; m < majorTicks; m++) {
-        if (m > 0) tick(start + m * mInc, TM);
-        if (minorTicks > 0) {
-          for (let j = 1; j < minorTicks; j++) tick(start + m * mInc + (j * mInc) / minorTicks, Tm);
-        }
-      }
-    };
-    while (val < hi - inc / 2 && k < 1000) {
-      label(val, k++);
-      inner(val);
-      val += inc;
-    }
-    label(val, k);
-  }
+  const { ticks, labels: scale } = barScale({
+    show: showScale,
+    font,
+    horizontal,
+    readMin,
+    readMax,
+    labelTicks: atol(propStr(p, 'labelTicks')),
+    majorTicks: atol(propStr(p, 'majorTicks')),
+    minorTicks: atol(propStr(p, 'minorTicks')),
+    areaX,
+    areaY,
+    areaW,
+    areaH,
+    sy: y + h - 2 * fh - 1,
+    fg: fgStatic,
+    bg,
+  });
 
   const labelText = pvNameLabel ? name : literal;
   return (

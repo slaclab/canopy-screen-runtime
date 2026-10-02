@@ -45,6 +45,7 @@ export { freezeEdmBlink } from './screen/blink.js';
 export type { EdmDocState } from './screen/docs.js';
 export type { EdmScreenProps } from './screen/EdmScreen.js';
 export {
+  EdmFreeze,
   EdmScreenContext,
   useEdmScreen,
   useEdmPv,

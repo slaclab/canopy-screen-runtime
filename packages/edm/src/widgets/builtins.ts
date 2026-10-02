@@ -10,6 +10,8 @@ import { Rectangle } from './Rectangle.js';
 import { Unregistered, registerEdmWidget } from './registry.js';
 import { RelatedDisplay } from './RelatedDisplay.js';
 import { Arc, Byte, Circle } from './Shapes.js';
+import { FreezeButton, Mmv } from './Slac.js';
+import { SlacBar } from './SlacBar.js';
 import { Textupdate } from './Textupdate.js';
 import { XText } from './XText.js';
 import { Textentry, makeTextDsp } from './XTextDsp.js';
@@ -39,6 +41,9 @@ export function registerEdmBuiltins(): void {
   registerEdmWidget('activeMotifSliderClass', MotifSlider);
   registerEdmWidget('activeBarClass', Bar);
   registerEdmWidget('TextentryClass', Textentry);
+  registerEdmWidget('activeSlacBarClass', SlacBar);
+  registerEdmWidget('activeFreezeButtonClass', FreezeButton);
+  registerEdmWidget('mmvClass', Mmv);
   // In .edl files, but registered by no EDM library: EDM draws nothing.
   registerEdmWidget('activeVsBarClass', Unregistered);
 }

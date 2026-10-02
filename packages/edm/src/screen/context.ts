@@ -49,6 +49,36 @@ export interface EdmScreenEnv {
   readonly scope: string;
   /** Paths of the displays this one is embedded in, outermost first (recursion guard). */
   readonly ancestors: readonly string[];
+  /** The window's freeze flag (activeFreezeButtonClass): PV updates are held while set. */
+  readonly freeze?: EdmFreeze;
+}
+
+/**
+ * A window's "frozen" state: while frozen, objects keep showing the values
+ * they had and apply the latest ones on unfreeze (EDM stops processing the
+ * window's deferred updates).
+ */
+export class EdmFreeze {
+  private on = false;
+  private readonly listeners = new Set<() => void>();
+
+  get frozen(): boolean {
+    return this.on;
+  }
+
+  toggle(): void {
+    this.on = !this.on;
+    for (const l of this.listeners) l();
+  }
+
+  subscribe = (l: () => void): (() => void) => {
+    this.listeners.add(l);
+    return () => {
+      this.listeners.delete(l);
+    };
+  };
+
+  getFrozen = (): boolean => this.on;
 }
 
 /** Parsed display files of one page, loaded once each. */
@@ -84,8 +114,8 @@ export function useEdmPv(raw: string | undefined, by: string): EdmPvData | undef
   const env = useEdmScreen();
   const expanded = raw?.trim() ? expandMacros(raw.trim(), env.macros) : '';
   const store = useMemo(
-    () => new PvStore(env.pv, raw?.trim() ?? '', expanded, by, env.scope),
-    [env.pv, raw, expanded, by, env.scope]
+    () => new PvStore(env.pv, raw?.trim() ?? '', expanded, by, env.scope, env.freeze),
+    [env.pv, raw, expanded, by, env.scope, env.freeze]
   );
   return useSyncExternalStore(store.subscribe, store.get, store.get);
 }
@@ -98,27 +128,53 @@ class PvStore {
   private readonly expanded: string;
   private readonly by: string;
   private readonly scope: string;
+  private readonly freeze: EdmFreeze | undefined;
 
-  constructor(layer: EdmPvLayer, raw: string, expanded: string, by: string, scope: string) {
+  constructor(
+    layer: EdmPvLayer,
+    raw: string,
+    expanded: string,
+    by: string,
+    scope: string,
+    freeze: EdmFreeze | undefined
+  ) {
     this.layer = layer;
     this.raw = raw;
     this.expanded = expanded;
     this.by = by;
     this.scope = scope;
+    this.freeze = freeze;
   }
 
   subscribe = (onChange: () => void) => {
     if (!this.expanded) return () => {};
-    return this.layer.subscribe(
+    const freeze = this.freeze;
+    let held: EdmPvData | undefined;
+    const thaw = freeze?.subscribe(() => {
+      if (!freeze.frozen && held) {
+        this.data = held;
+        held = undefined;
+        onChange();
+      }
+    });
+    const unsub = this.layer.subscribe(
       this.raw,
       this.expanded,
       this.by,
       (d) => {
+        if (freeze?.frozen && this.data !== undefined) {
+          held = d;
+          return;
+        }
         this.data = d;
         onChange();
       },
       this.scope
     );
+    return () => {
+      unsub();
+      thaw?.();
+    };
   };
 
   get = () => this.data;

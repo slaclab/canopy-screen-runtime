@@ -13,6 +13,8 @@ import { raisedBevel } from './button.js';
 import { registerEdmBuiltins } from './builtins.js';
 import { choiceLayout } from './MenuChoice.js';
 import { byteBoundaries } from './Shapes.js';
+import { mmvMarker } from './Slac.js';
+import { slacBarExtent } from './SlacBar.js';
 import { messageValue } from './Buttons.js';
 import { textControlWrite, textEntryWrite } from './XTextDsp.js';
 
@@ -485,5 +487,25 @@ describe('graphics', () => {
     slider.getBoundingClientRect = () => ({ left: 0, right: 78, top: 0, bottom: 14 }) as DOMRect;
     fireEvent.mouseDown(slider, { button: 0, clientX: 70, clientY: 5 });
     expect(puts).toEqual([['V', 3]]);
+  });
+});
+
+describe('SLAC widgets', () => {
+  it('slac bar: origin-relative extents, half up, clamped at the range ends', () => {
+    // gasjets: range -10..2 from -10, L 99, v 1.103 -> 92 px
+    expect(slacBarExtent(1.103, -10, 2, -10, 99)).toEqual({ oL: 0, start: 0, ext: 92 });
+    // xorbitBSY: -1..1 from 0, L 350, value above the range -> the far half
+    expect(slacBarExtent(5, -1, 1, 0, 350)).toEqual({ oL: 175, start: 175, ext: 175 });
+    // below the origin: grows toward readMin
+    expect(slacBarExtent(-0.5, -1, 1, 0, 350)).toEqual({ oL: 175, start: 87, ext: 88 });
+  });
+
+  it('mmv: 60-degree pie markers with X pixel rules', () => {
+    // HorizTop, r 12: half-widths per row from the round side down to the tip
+    const px = mmvMarker(0, 50, 12, 460, 12);
+    const rows = new Map<number, number[]>();
+    for (const [x, y] of px) rows.set(y, [...(rows.get(y) ?? []), x]);
+    const half = [...rows.keys()].sort((a, b) => a - b).map((y) => (rows.get(y)!.length - 1) / 2);
+    expect(half).toEqual([0, 4, 5, 5, 4, 4, 3, 2, 2, 1, 1, 0]);
   });
 });

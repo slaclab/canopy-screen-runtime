@@ -3,7 +3,7 @@
 // hidden objects far off-screen; the canvas never grows). Files without w/h
 // (template fragments) are sized from their content.
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { parseColorSpec } from '../config/colors.js';
 import type { EdmPalette } from '../config/colors.js';
 import type { EdmMacros } from '../macros.js';
@@ -12,7 +12,7 @@ import { propInt, propStr } from '../model.js';
 import type { EdmDisplaySource } from '../loader/source.js';
 import type { EdmPvLayer } from '../pv/layer.js';
 import { EdmObjectView } from '../widgets/registry.js';
-import { EdmScreenContext, useEdmScreen } from './context.js';
+import { EdmFreeze, EdmScreenContext, useEdmScreen } from './context.js';
 import type { EdmOpenDisplayRequest, EdmScreenEnv } from './context.js';
 import { useBlinkPhase } from './blink.js';
 import { docCache } from './docs.js';
@@ -69,6 +69,7 @@ export function EdmScreen({
   const { w, h } = screenSize(doc);
   const { bg, fg } = screenColors(doc, palette);
   const docs = useMemo(() => (source ? docCache(source) : undefined), [source]);
+  const [freeze] = useState(() => new EdmFreeze());
   // Blinking colours are custom properties set here, so a blink restyles the
   // screen without re-rendering a single object.
   const blinking = useMemo(() => palette.blinking(), [palette]);
@@ -88,8 +89,9 @@ export function EdmScreen({
       docs,
       scope: '',
       ancestors: [],
+      freeze,
     }),
-    [palette, pv, macros, path, bg, fg, openDisplay, closeDisplay, source, docs]
+    [palette, pv, macros, path, bg, fg, openDisplay, closeDisplay, source, docs, freeze]
   );
   return (
     <EdmScreenContext.Provider value={env}>
