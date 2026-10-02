@@ -15,7 +15,11 @@ import { choiceLayout } from './MenuChoice.js';
 import { byteBoundaries } from './Shapes.js';
 import { decodeGif } from './gif.js';
 import { imageName, profileImage } from './Images.js';
+import { pipFileName } from './Pip.js';
 import { mmvMarker } from './Slac.js';
+import { symbolValue } from './Symbol.js';
+import { symbolStates } from './symbolStates.js';
+import { layerMacros, muxDefinition } from '../screen/mux.js';
 import { slacBarExtent } from './SlacBar.js';
 import { messageValue } from './Buttons.js';
 import { textControlWrite, textEntryWrite } from './XTextDsp.js';
@@ -540,5 +544,77 @@ describe('images', () => {
     // 2 x 2 data of 12-bit levels into a 2 x 2 box: >> 4
     const img = profileImage([0, 4095, 16, 32], 2, 2, 12, 2, 2)!;
     expect([img[0], img[4], img[8], img[12]]).toEqual([0, 255, 1, 2]);
+  });
+});
+
+describe('embedded displays, symbols, multiplexors', () => {
+  it('pip: a numeric file PV reads as value and units (which names no file)', () => {
+    expect(pipFileName(pv({ num: 7.624, units: 'u', precision: 2 }))).toBe('7.62 u');
+    expect(pipFileName(pv({ type: 'string', text: 'emb.edl' }))).toBe('emb.edl');
+  });
+
+  it('symbol: groups are states, moved to x, y, resized with half-up rounding', () => {
+    const doc = parseEdl(`4 0 1
+beginScreenProperties
+w 100
+h 100
+endScreenProperties
+object activeGroupClass
+beginObjectProperties
+x 50
+y 60
+w 19
+h 18
+
+beginGroup
+
+object activeCircleClass
+beginObjectProperties
+x 53
+y 63
+w 12
+h 12
+endObjectProperties
+
+endGroup
+
+endObjectProperties
+`);
+    const s = symbolStates(doc, { x: 10, y: 20, w: 16, h: 16 }, 2, false, 'original');
+    expect(s.states).toHaveLength(2); // the second state is an empty extra one
+    const c = s.states[0][0].props;
+    // ofon.edl in exp/ip440: circle (3,3) 12x12 of 19x18 -> (+3,+3) 10x11
+    expect([c.x, c.y, c.w, c.h]).toEqual(['13', '23', '10', '11']);
+    expect([s.w, s.h]).toEqual([16, 16]);
+  });
+
+  it('symbol: masked, shifted values OR together; one plain PV is its value', () => {
+    expect(symbolValue([pv({ num: 3.5 })], false, [], [], [])).toBe(3.5);
+    expect(symbolValue([pv({ num: 1 }), pv({ num: 2 })], false, [], [], [4, 0])).toBe(0x12);
+    expect(symbolValue([pv({ num: 1 }), pv({ num: 0 })], true, [], [], [])).toBe(1);
+  });
+
+  it('menu mux: item macro sets; window macros and the first mux win', () => {
+    const o = parseEdl(`4 0 1
+object menuMuxClass
+beginObjectProperties
+symbolTag {
+  0 "A"
+  1 "B"
+}
+symbol0 {
+  0 "dev"
+  1 "dev"
+}
+value0 {
+  0 "X"
+}
+endObjectProperties
+`).objects[0];
+    const def = muxDefinition(o);
+    expect(def.labels).toEqual(['A', 'B']);
+    expect(def.sets).toEqual([{ dev: 'X' }, {}]);
+    expect(layerMacros({ dev: 'W' }, [{ dev: 'X' }])).toEqual({ dev: 'W' });
+    expect(layerMacros({}, [{ a: '1' }, { a: '2', b: '3' }])).toEqual({ a: '1', b: '3' });
   });
 });

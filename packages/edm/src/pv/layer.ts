@@ -76,10 +76,14 @@ export class EdmPvLayer {
       listener(DISCONNECTED);
       return () => {};
     }
-    return conn.subscribe(ref.name, (d) => {
-      this.state.set(expanded, d.connected);
-      listener(d);
-    });
+    return conn.subscribe(
+      ref.name,
+      (d) => {
+        this.state.set(expanded, d.connected);
+        listener(d);
+      },
+      scope
+    );
   }
 
   /** Channel states: `pending` = subscribed but no update yet. */

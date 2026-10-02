@@ -6,7 +6,9 @@ import { Group } from './Group.js';
 import { GifImageView, PngImage, TwoDProfileMonitor } from './Images.js';
 import { Indicator } from './Indicator.js';
 import { Line } from './Line.js';
+import { Pip } from './Pip.js';
 import { ChoiceButton, MenuButton } from './MenuChoice.js';
+import { MenuMux } from './MenuMux.js';
 import { Meter } from './Meter.js';
 import { MotifSlider, makeMotifSlider } from './MotifSlider.js';
 import { RadioBox } from './Radio.js';
@@ -17,6 +19,7 @@ import { RelatedDisplay } from './RelatedDisplay.js';
 import { Arc, Byte, Circle } from './Shapes.js';
 import { FreezeButton, Mmv } from './Slac.js';
 import { SlacBar } from './SlacBar.js';
+import { ActiveSymbol, AnaSymbol } from './Symbol.js';
 import { Slider } from './Slider.js';
 import { Textupdate } from './Textupdate.js';
 import { XText } from './XText.js';
@@ -60,6 +63,11 @@ export function registerEdmBuiltins(): void {
   registerEdmWidget('TwoDProfileMonitorClass', TwoDProfileMonitor);
   registerEdmWidget('activeIndicatorClass', Indicator);
   registerEdmWidget('activeMeterClass', Meter);
+  registerEdmWidget('activePipClass', Pip);
+  registerEdmWidget('activeSymbolClass', ActiveSymbol);
+  registerEdmWidget('anaSymbolClass', AnaSymbol);
+  registerEdmWidget('aniSymbolClass', AnaSymbol);
+  registerEdmWidget('menuMuxClass', MenuMux);
   // In .edl files, but registered by no EDM library: EDM draws nothing.
   registerEdmWidget('activeVsBarClass', Unregistered);
 }

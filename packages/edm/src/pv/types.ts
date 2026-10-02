@@ -34,6 +34,7 @@ export type EdmPvListener = (data: EdmPvData) => void;
  * prefix removed and macros expanded.
  */
 export interface EdmPvConnection {
-  subscribe(name: string, listener: EdmPvListener): () => void;
+  /** `scope`: the subscriber's (for channels a connection opens in turn, e.g. CALC\ arguments). */
+  subscribe(name: string, listener: EdmPvListener, scope?: string): () => void;
   put?(name: string, value: number | string): void;
 }

@@ -39,7 +39,7 @@ export { calcConnection, parseCalcList, parseCalcName } from './pv/calc.js';
 export { CalcError, compileCalc, performCalc } from './pv/calcExpr.js';
 export type { LocalConnection } from './pv/local.js';
 export type { EdmPvConnection, EdmPvData, EdmPvListener, EdmPvType } from './pv/types.js';
-export { EdmScreen, EdmSubScreen, screenFonts, screenSize } from './screen/EdmScreen.js';
+export { EdmScoped, EdmScreen, EdmWindow, screenFonts, screenSize } from './screen/EdmScreen.js';
 export { docCache, edlName, useEdmDoc } from './screen/docs.js';
 export { freezeEdmBlink } from './screen/blink.js';
 export type { EdmDocState } from './screen/docs.js';
@@ -56,6 +56,7 @@ export {
 export type {
   EdmDocCache,
   EdmLoadedDoc,
+  EdmMuxState,
   EdmOpenDisplayRequest,
   EdmPhase,
   EdmScreenEnv,

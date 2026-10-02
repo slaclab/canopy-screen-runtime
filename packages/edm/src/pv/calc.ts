@@ -126,7 +126,7 @@ export function calcConnection(
   };
 
   return {
-    subscribe(name, listener) {
+    subscribe(name, listener, scope = '') {
       const ref = parseCalcName(name);
       const prog = ref ? program(ref.head) : undefined;
       if (!ref || prog === undefined) {
@@ -158,11 +158,17 @@ export function calcConnection(
           return;
         }
         unsubs.push(
-          layer.subscribe(arg, arg, 'CALC.arg', (d) => {
-            state[i] = d;
-            values[i] = d.num;
-            recompute();
-          })
+          layer.subscribe(
+            arg,
+            arg,
+            'CALC.arg',
+            (d) => {
+              state[i] = d;
+              values[i] = d.num;
+              recompute();
+            },
+            scope
+          )
         );
       });
       // No PV arguments (or all already delivered): the value is computed at once.

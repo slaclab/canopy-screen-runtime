@@ -10,9 +10,9 @@ import { screenFonts } from './fonts.js';
 import type { EdmDocCache, EdmLoadedDoc } from './context.js';
 import { useEdmScreen } from './context.js';
 
-/** EDM appends `.edl` to a display name without an extension. */
+/** EDM appends `.edl` when the name's last path component has no '.' at all. */
 export function edlName(file: string): string {
-  return /\.[a-z0-9]+$/i.test(file) ? file : `${file}.edl`;
+  return file.slice(file.lastIndexOf('/') + 1).includes('.') ? file : `${file}.edl`;
 }
 
 export function docCache(source: EdmDisplaySource): EdmDocCache {
@@ -43,11 +43,15 @@ export type EdmDocState =
   | ({ readonly status: 'ready' } & EdmLoadedDoc);
 
 /**
- * A display file named by an object of this screen (macros already expanded),
- * found relative to this screen as EDM does. `none` without a name or loader.
+ * A display file named by an object of this screen (macros already expanded).
+ * EDM searches its EDMDATAFILES list, the same for every window, so names
+ * are resolved from the displayed (top-level) screen even inside embedded
+ * displays. `none` without a name or loader.
  */
 export function useEdmDoc(file: string | undefined): EdmDocState {
-  const { docs, path } = useEdmScreen();
+  const env = useEdmScreen();
+  const { docs } = env;
+  const path = env.ancestors[0] ?? env.path;
   const name = file?.trim() ?? '';
   const key = docs && name ? `${path}\u0000${name}` : '';
   const [loaded, setLoaded] = useState<{ key: string; state: EdmDocState } | null>(null);

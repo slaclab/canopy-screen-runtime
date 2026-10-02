@@ -8,7 +8,7 @@ import {
 } from 'react';
 import type { EdmPalette } from '../config/colors.js';
 import type { EdmDisplaySource } from '../loader/source.js';
-import type { EdmDocument } from '../model.js';
+import type { EdmDocument, EdmObject } from '../model.js';
 import { expandMacros } from '../macros.js';
 import type { EdmMacros } from '../macros.js';
 import type { EdmPvLayer } from '../pv/layer.js';
@@ -51,6 +51,17 @@ export interface EdmScreenEnv {
   readonly ancestors: readonly string[];
   /** The window's freeze flag (activeFreezeButtonClass): PV updates are held while set. */
   readonly freeze?: EdmFreeze;
+  /** This window's own macros (without menuMux sets); `macros` adds the mux layer. */
+  readonly windowMacros?: EdmMacros;
+  /** The macros the displayed (top-level) screen was opened with: EDM's application macros. */
+  readonly appMacros?: EdmMacros;
+  /** The window's menu multiplexors: their current items and how to change one. */
+  readonly mux?: EdmMuxState;
+}
+
+export interface EdmMuxState {
+  current(obj: EdmObject): number;
+  select(obj: EdmObject, item: number): void;
 }
 
 /**
