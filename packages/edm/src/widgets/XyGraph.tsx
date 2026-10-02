@@ -73,6 +73,23 @@ interface TraceDef {
   readonly y?: EdmPvData;
   readonly x?: EdmPvData;
   readonly n?: EdmPvData;
+  /** mzxyGraph: [LOPR, HOPR] from the companion PVs. */
+  readonly limits?: [number, number];
+}
+
+const EPICS_EPOCH_MS = Date.UTC(1990, 0, 1);
+const two = (n: number) => String(n).padStart(2, '0');
+
+/** A dateTime axis label: local "HH:MM:SS[.ff]" and "MM-DD-YYYY" of the EPICS epoch + v s. */
+export function timeLabel(v: number): [string, string] {
+  const whole = Math.floor(v);
+  const ff = rint((v - whole) * 100);
+  const d = new Date(EPICS_EPOCH_MS + whole * 1000);
+  const t = `${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`;
+  return [
+    ff > 0 ? `${t}.${two(ff)}` : t,
+    `${two(d.getMonth() + 1)}-${two(d.getDate())}-${d.getFullYear()}`,
+  ];
 }
 
 /** Load-time repair of a configured range (only with traces). */
@@ -92,7 +109,23 @@ function elements(d: EdmPvData | undefined, n: EdmPvData | undefined): readonly 
   return ts > 0 && ts <= all.length ? all.slice(0, ts) : all;
 }
 
-export function XyGraph({ obj }: EdmWidgetProps) {
+export function XyGraph(props: EdmWidgetProps) {
+  return <Graph {...props} cls={CLS} mz={false} />;
+}
+
+/**
+ * mzxyGraphClass (slaclib/mz_xygraph.cc): SLAC's copy of the X-Y graph. Each
+ * y trace also connects <yPv>.HOPR and .LOPR, whose values are its fromPv
+ * limits; traces without a colour use the colour alias trace<i>; and its
+ * patch writes per-trace flags past a 2-entry array, so a vector trace at
+ * index 6 with an integer (or absent) y2Min resets x and the used y axes to a
+ * locked 0..1, with the end labels black on white (as EDM shows them).
+ */
+export function MzXyGraph(props: EdmWidgetProps) {
+  return <Graph {...props} cls="mzxyGraphClass" mz />;
+}
+
+function Graph({ obj, cls: CLS, mz }: EdmWidgetProps & { cls: string; mz: boolean }) {
   const env = useEdmScreen();
   const { palette, displayBg } = env;
   const p = obj.props;
@@ -116,7 +149,14 @@ export function XyGraph({ obj }: EdmWidgetProps) {
   const ctlIdx = add(propStr(p, 'traceCtlPv'), 'traceCtlPv');
   add(propStr(p, 'resetPv'), 'resetPv');
   add(propStr(p, 'triggerPv'), 'triggerPv');
-  const slots: { kind: 'xy' | 'chrono' | 'invalid'; y: number; x: number; n: number }[] = [];
+  const slots: {
+    kind: 'xy' | 'chrono' | 'invalid';
+    y: number;
+    x: number;
+    n: number;
+    hopr: number;
+    lopr: number;
+  }[] = [];
   for (let i = 0; i < numTraces; i++) {
     const rawX = unq(xPvs[i]);
     const rawY = unq(yPvs[i]);
@@ -128,12 +168,18 @@ export function XyGraph({ obj }: EdmWidgetProps) {
           : 'invalid';
     let yi = -1;
     let xi = -1;
+    let hopr = -1;
+    let lopr = -1;
     if (kind !== 'invalid' && !blankOrComment(ex(rawY))) {
       yi = add(rawY, 'yPv');
+      if (mz) {
+        hopr = add(`${ex(rawY).trim()}.HOPR`, 'yPv.companion');
+        lopr = add(`${ex(rawY).trim()}.LOPR`, 'yPv.companion');
+      }
       if (kind === 'xy') xi = add(rawX, 'xPv');
     }
     const ni = add(nPvs[i], 'nPv');
-    slots.push({ kind, y: yi, x: xi, n: ni });
+    slots.push({ kind, y: yi, x: xi, n: ni, hopr, lopr });
   }
   const data = useEdmPvList(names, bys);
 
@@ -169,7 +215,18 @@ export function XyGraph({ obj }: EdmWidgetProps) {
       symbol: symbols[i] || 'none',
       plotMode: opModes[i] === 'plot',
       y2: !!useY2[i],
-      color: palette.spec(parseColorSpec(colours[i] ?? 'index 0') ?? { kind: 'index', index: 0 }),
+      color: colours[i]
+        ? palette.spec(parseColorSpec(colours[i]))
+        : mz
+          ? (palette.cssByName(`trace${i}`) ?? palette.css(0))
+          : palette.css(0),
+      limits:
+        s.hopr >= 0
+          ? [
+              data[s.lopr]?.connected ? data[s.lopr]!.num : 0,
+              data[s.hopr]?.connected ? data[s.hopr]!.num : 0,
+            ]
+          : undefined,
       y: data[s.y],
       x: s.x >= 0 ? data[s.x] : undefined,
       n: s.n >= 0 ? data[s.n] : undefined,
@@ -255,11 +312,13 @@ export function XyGraph({ obj }: EdmWidgetProps) {
     const [tmin, tmax] = configured(a);
     if (src === 'fromUser') cur[a] = [tmin, tmax];
     else if (src === 'fromPv') {
-      const pvs = onAxis(a)
-        .map((t) => (a === 'x' ? t.x : t.y))
-        .filter((d): d is EdmPvData => !!d?.connected);
-      cur[a] = pvs.length
-        ? [Math.min(...pvs.map((d) => d.lowerLimit)), Math.max(...pvs.map((d) => d.upperLimit))]
+      const lims = onAxis(a).flatMap((t): [number, number][] => {
+        if (a !== 'x' && t.limits) return [t.limits];
+        const d = a === 'x' ? t.x : t.y;
+        return d?.connected ? [[d.lowerLimit, d.upperLimit]] : [];
+      });
+      cur[a] = lims.length
+        ? [Math.min(...lims.map((l) => l[0])), Math.max(...lims.map((l) => l[1]))]
         : [0, 1];
     } else {
       const r = roundRange(Math.min(tmin, 0), Math.max(tmax, 0));
@@ -290,6 +349,38 @@ export function XyGraph({ obj }: EdmWidgetProps) {
       }
       const r = roundRange(lo, hi);
       cur[a] = [r.min, r.max];
+    }
+  }
+  // autoScaleBothDirections: every second an AutoScale axis whose data fill
+  // too little of it is refitted to the data.
+  if (propBool(p, 'autoScaleBothDirections')) {
+    const pct = numTag(p, 'autoScaleThreshPct');
+    const thresh = pct === null ? 0.5 : 0.01 * pct;
+    for (let pass = 0; pass < 4; pass++) {
+      for (const a of keys) {
+        if (srcOf(a) !== 'AutoScale') continue;
+        const span = dataSpan(a);
+        if (!span || span[1] === span[0]) continue;
+        const curSpan = Math.abs(cur[a][1] - cur[a][0]);
+        if ((curSpan - Math.abs(span[1] - span[0])) / curSpan <= thresh) continue;
+        const lo = span[0] - 0.02 * Math.abs(span[1] - cur[a][0]);
+        const hi = span[1] + 0.02 * Math.abs(span[1] - lo);
+        const r = roundRange(lo, hi);
+        cur[a] = [r.min, r.max];
+      }
+    }
+  }
+  const locked = new Set<AxisKey>();
+  if (mz) {
+    const y2Min = numTag(p, 'y2Min');
+    const t6 = visible.find((t) => t.i === 6);
+    if (t6 && vectorOf(t6) && Number.isInteger(y2Min ?? 0)) {
+      for (const a of keys) {
+        if (a === 'x' || onAxis(a).length) {
+          cur[a] = [0, 1];
+          locked.add(a);
+        }
+      }
     }
   }
   for (const a of keys) {
@@ -328,8 +419,15 @@ export function XyGraph({ obj }: EdmWidgetProps) {
   let ly2 = show.y2
     ? yScaleWidth(font, axes.y2.adj[0], axes.y2.adj[1], axes.y2.auto.n, LT(true)) + 2
     : 0;
-  const hx = show.x ? Math.trunc(1.4 * fh) : 0;
-  const lx = show.x ? xScaleMargin(font, axes.x.cur[0], axes.x.cur[1]) + 1 : 0;
+  const timeDate =
+    enumTag(p, 'xAxisStyle', 'linear') === 'time' &&
+    enumTag(p, 'xAxisTimeFormat', 'seconds') === 'dateTime';
+  const hx = show.x ? Math.trunc(1.4 * fh) + (timeDate ? fh : 0) : 0;
+  const lx = !show.x
+    ? 0
+    : timeDate
+      ? idiv(textWidth(font, '00-00-0000'), 2) + 6 + 1
+      : xScaleMargin(font, axes.x.cur[0], axes.x.cur[1]) + 1;
   if (show.y && !show.y2) ly2 = 10;
   if (show.y2 && !show.y) ly1 = 10;
   ly1 = Math.max(ly1, lx);
@@ -371,8 +469,10 @@ export function XyGraph({ obj }: EdmWidgetProps) {
     const mt = Math.trunc(0.7 * lt);
     const mn = Math.trunc(0.4 * lt);
     const f = len / (cmax - cmin);
-    const at =
-      a === 'x'
+    const time = a === 'x' && timeDate;
+    const at = time
+      ? (v: number) => Math.trunc(rint(((v - amin) * len) / (amax - amin) + X))
+      : a === 'x'
         ? (() => {
             const off = Math.trunc(rint((amin - cmin) * f + X));
             return (v: number) => Math.trunc(rint((v - amin) * f + off));
@@ -407,12 +507,54 @@ export function XyGraph({ obj }: EdmWidgetProps) {
       );
     }
     let lastLabel = amin;
-    labelValues(amin, amax, n).forEach((v, k) => {
+    // A dateTime axis stops half a step short, then labels the last value
+    // without a grid line.
+    let values = labelValues(amin, amax, n);
+    if (time) {
+      values = [];
+      let v = amin;
+      for (; v < amax - inc / 2 && values.length < 1000; v += inc) values.push(v);
+      values.push(v);
+    }
+    const inRangeIdx = values.map((v) => inRange(at(v)));
+    const firstIn = inRangeIdx.indexOf(true);
+    const lastIn = inRangeIdx.lastIndexOf(true);
+    values.forEach((v, k) => {
       const c = at(v);
+      const isLast = time && k === values.length - 1;
+      // A locked (box) limit shows its end labels black on white.
+      const boxed = locked.has(a) && (k === firstIn || k === lastIn);
+      const tf = boxed ? '#000000' : fg;
+      const tb = boxed ? '#ffffff' : displayBg;
       if (inRange(c)) {
         tick(c, lt);
-        if (ax.grids.label && k !== 0) grid(c, false);
-        if (ax.shown && withText && !onlyGrid) {
+        if (ax.grids.label && k !== 0 && !isLast) grid(c, false);
+        if (ax.shown && withText && !onlyGrid && time) {
+          const [tl, dl] = timeLabel(v);
+          const top = oy + ya + Math.trunc(1.2 * lt);
+          texts.push(
+            <g key={`${a}${k}`}>
+              <ScaleText
+                font={font}
+                text={tl}
+                at={ox + c}
+                top={top}
+                align="center"
+                fill={tf}
+                bg={tb}
+              />
+              <ScaleText
+                font={font}
+                text={dl}
+                at={ox + c}
+                top={top + fh}
+                align="center"
+                fill={tf}
+                bg={tb}
+              />
+            </g>
+          );
+        } else if (ax.shown && withText && !onlyGrid) {
           const text = tickText(neg ? -v : v, inc);
           texts.push(
             a === 'x' ? (
@@ -423,8 +565,8 @@ export function XyGraph({ obj }: EdmWidgetProps) {
                 at={ox + c}
                 top={oy + ya + Math.trunc(1.2 * lt)}
                 align="center"
-                fill={fg}
-                bg={displayBg}
+                fill={tf}
+                bg={tb}
               />
             ) : (
               <ScaleText
@@ -434,8 +576,8 @@ export function XyGraph({ obj }: EdmWidgetProps) {
                 at={ox + X - Math.trunc(1.2 * lt)}
                 top={oy + c - Math.trunc(0.5 * fh)}
                 align="end"
-                fill={fg}
-                bg={displayBg}
+                fill={tf}
+                bg={tb}
               />
             )
           );

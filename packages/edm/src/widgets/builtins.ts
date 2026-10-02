@@ -30,7 +30,7 @@ import { ActiveSymbol, AnaSymbol } from './Symbol.js';
 import { Slider } from './Slider.js';
 import { RegTextupdate, Textupdate } from './Textupdate.js';
 import { XRegText, XText } from './XText.js';
-import { XyGraph } from './XyGraph.js';
+import { MzXyGraph, XyGraph } from './XyGraph.js';
 import { Textentry, makeTextDsp } from './XTextDsp.js';
 
 let registered = false;
@@ -84,6 +84,7 @@ export function registerEdmBuiltins(): void {
   registerEdmWidget('activeTableClass', Table);
   registerEdmWidget('activeCoefTableClass', CoefTable);
   registerEdmWidget('xyGraphClass', XyGraph);
+  registerEdmWidget('mzxyGraphClass', MzXyGraph);
   // In .edl files, but registered by no EDM library: EDM draws nothing.
   registerEdmWidget('activeVsBarClass', Unregistered);
 }

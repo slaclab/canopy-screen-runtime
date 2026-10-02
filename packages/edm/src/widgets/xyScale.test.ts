@@ -23,3 +23,14 @@ describe('xyGraph range rounding (EDM get_scale_params1)', () => {
     for (let k = -20; k <= 20; k++) expect(Math.log10(10 ** k)).toBe(k);
   });
 });
+
+describe('dateTime axis labels', () => {
+  it('count seconds from the EPICS epoch in local time (UTC here), with hundredths', async () => {
+    const { timeLabel } = await import('./XyGraph.js');
+    const tz = process.env.TZ;
+    process.env.TZ = 'UTC';
+    expect(timeLabel(-20)).toEqual(['23:59:40', '12-31-1989']);
+    expect(timeLabel(0.2)).toEqual(['00:00:00.20', '01-01-1990']);
+    process.env.TZ = tz;
+  });
+});
