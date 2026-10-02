@@ -163,5 +163,8 @@ function toEdm(d: PVData, meta: PVMetaDTO | undefined): EdmPvData {
     ...(Array.isArray(d.value) && typeof d.value[0] !== 'string'
       ? { values: (d.value as readonly unknown[]).map((e) => Number(e)) }
       : {}),
+    // Hare turns a char waveform into text; its record still has display limits
+    // (numeric), a DBR_STRING channel has none.
+    ...(type === 'string' && meta?.displayLow != null ? { charArray: true } : {}),
   };
 }

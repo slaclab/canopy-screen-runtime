@@ -24,6 +24,8 @@ export interface EdmPvData {
   readonly writable: boolean;
   /** Every element of a numeric waveform (graphs, images); absent for scalars. */
   readonly values?: readonly number[];
+  /** A char waveform delivered as text (Hare reports both it and DBR_STRING as text). */
+  readonly charArray?: boolean;
 }
 
 export type EdmPvListener = (data: EdmPvData) => void;

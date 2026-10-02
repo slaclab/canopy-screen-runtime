@@ -11,6 +11,13 @@ import { ChoiceButton, MenuButton } from './MenuChoice.js';
 import { MenuMux } from './MenuMux.js';
 import { Meter } from './Meter.js';
 import { MotifSlider, makeMotifSlider } from './MotifSlider.js';
+import {
+  CoefTable,
+  MessageBox,
+  MultiLineTextEntry,
+  MultiLineTextUpdate,
+  Table,
+} from './MotifText.js';
 import { RadioBox } from './Radio.js';
 import { RampButton, UpdownButton } from './RampUpdown.js';
 import { Rectangle } from './Rectangle.js';
@@ -21,8 +28,8 @@ import { FreezeButton, Mmv } from './Slac.js';
 import { SlacBar } from './SlacBar.js';
 import { ActiveSymbol, AnaSymbol } from './Symbol.js';
 import { Slider } from './Slider.js';
-import { Textupdate } from './Textupdate.js';
-import { XText } from './XText.js';
+import { RegTextupdate, Textupdate } from './Textupdate.js';
+import { XRegText, XText } from './XText.js';
 import { Textentry, makeTextDsp } from './XTextDsp.js';
 
 let registered = false;
@@ -68,6 +75,13 @@ export function registerEdmBuiltins(): void {
   registerEdmWidget('anaSymbolClass', AnaSymbol);
   registerEdmWidget('aniSymbolClass', AnaSymbol);
   registerEdmWidget('menuMuxClass', MenuMux);
+  registerEdmWidget('RegTextupdateClass', RegTextupdate);
+  registerEdmWidget('activeXRegTextClass', XRegText);
+  registerEdmWidget('multiLineTextUpdateClass', MultiLineTextUpdate);
+  registerEdmWidget('multiLineTextEntryClass', MultiLineTextEntry);
+  registerEdmWidget('activeMessageBoxClass', MessageBox);
+  registerEdmWidget('activeTableClass', Table);
+  registerEdmWidget('activeCoefTableClass', CoefTable);
   // In .edl files, but registered by no EDM library: EDM draws nothing.
   registerEdmWidget('activeVsBarClass', Unregistered);
 }

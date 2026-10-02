@@ -24,6 +24,7 @@ import type { EdmPvData } from '../pv/types.js';
 import { useEdmPv, useEdmScreen, useExpanded } from '../screen/context.js';
 import type { EdmWidgetProps } from './registry.js';
 import {
+  SHOWS_IN_HIDDEN_GROUP,
   SvgBox,
   TextRun,
   XRectOutline,
@@ -69,21 +70,66 @@ export function textupdateText(d: EdmPvData, mode: string | undefined, precision
   return pvString(d);
 }
 
-export function Textupdate({ obj }: EdmWidgetProps) {
+/**
+ * A POSIX extended regular expression as EDM's regex classes apply it: the
+ * displayed text is capture group 1 of the match (empty without one), the
+ * whole text when nothing matches or the pattern is invalid. Translated to
+ * a JS RegExp for the common cases (bracket classes; `\d` is a literal d).
+ */
+export function applyRegExpr(text: string, pattern: string): string {
+  if (!pattern) return text;
+  const js = pattern
+    .replaceAll('[:digit:]', '0-9')
+    .replaceAll('[:alpha:]', 'A-Za-z')
+    .replaceAll('[:alnum:]', 'A-Za-z0-9')
+    .replaceAll('[:upper:]', 'A-Z')
+    .replaceAll('[:lower:]', 'a-z')
+    .replaceAll('[:space:]', '\\s')
+    .replaceAll('[:xdigit:]', '0-9A-Fa-f')
+    .replace(/\\d/g, 'd');
+  let re: RegExp;
+  try {
+    re = new RegExp(js, 's');
+  } catch {
+    return text;
+  }
+  const m = re.exec(text);
+  if (!m) return text;
+  return m[1] ?? '';
+}
+
+export function Textupdate(props: EdmWidgetProps) {
+  return <TextupdateBody {...props} cls={CLS} />;
+}
+
+/**
+ * RegTextupdateClass (pvFactory/regTextupdate.cc): Textupdate with `regExpr`
+ * applied to the text (at most 79 characters), and drawn even inside a
+ * hidden group (its redraw never checks whether it is enabled).
+ */
+export function RegTextupdate(props: EdmWidgetProps) {
+  return <TextupdateBody {...props} cls="RegTextupdateClass" reg />;
+}
+
+function TextupdateBody({ obj, cls, reg }: EdmWidgetProps & { cls: string; reg?: boolean }) {
   const { palette } = useEdmScreen();
   const p = obj.props;
   const g = geom(p);
   const font = resolveFont(propStr(p, 'font'));
   const controlPv = propStr(p, 'controlPv');
   const colorPv = propStr(p, 'colorPv');
-  const pv = useEdmPv(controlPv, `${CLS}.controlPv`);
-  const cpv = useEdmPv(colorPv, `${CLS}.colorPv`);
+  const pv = useEdmPv(controlPv, `${cls}.controlPv`);
+  const cpv = useEdmPv(colorPv, `${cls}.colorPv`);
   const expandedName = useExpanded(controlPv) ?? '';
 
   const valid = !!pv?.connected;
-  const text = valid
+  let text = valid
     ? textupdateText(pv, propStr(p, 'displayMode'), propInt(p, 'precision', 0))
     : `<${expandedName}>`;
+  if (reg) {
+    text = text.slice(0, 79);
+    if (valid) text = applyRegExpr(text, propStr(p, 'regExpr') ?? '');
+  }
   const fgSpec = colorSpec(p, 'fgColor');
   const ruleSrc = colorPv?.trim() ? cpv : pv;
   let fg: string | undefined;
@@ -113,7 +159,13 @@ export function Textupdate({ obj }: EdmWidgetProps) {
   const pad = Math.max(1, lw);
 
   return (
-    <SvgBox x={g.x - pad} y={g.y - pad} w={g.w + 2 * pad + 1} h={g.h + 2 * pad + 1}>
+    <SvgBox
+      x={g.x - pad}
+      y={g.y - pad}
+      w={g.w + 2 * pad + 1}
+      h={g.h + 2 * pad + 1}
+      style={reg ? SHOWS_IN_HIDDEN_GROUP : undefined}
+    >
       {propBool(p, 'fill') ? <rect x={g.x} y={g.y} width={g.w} height={g.h} fill={bg} /> : null}
       {showLine ? <XRectOutline {...g} lineWidth={lw} color={line} /> : null}
       <svg

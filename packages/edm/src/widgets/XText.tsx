@@ -1,10 +1,11 @@
 // activeXTextClass (static text), after EDM baselib/x_text_obj.cc
 // createFromFile / drawActive / updateDimensions.
 
-import { resolveFont } from '../config/fonts.js';
+import { resolveFont, textWidth } from '../config/fonts.js';
 import { propBool, propInt, propStr, propText } from '../model.js';
 import { useEdmPv, useEdmScreen, useExpanded, usePhase } from '../screen/context.js';
 import type { EdmWidgetProps } from './registry.js';
+import { applyRegExpr } from './Textupdate.js';
 import {
   SHOWS_IN_HIDDEN_GROUP,
   SvgBox,
@@ -97,6 +98,73 @@ export function XText({ obj }: EdmWidgetProps) {
           color={fg}
         />
       ) : null}
+    </SvgBox>
+  );
+}
+
+const REG = 'activeXRegTextClass';
+
+/**
+ * activeXRegTextClass (baselib/x_regtext_obj.cc), an older fork of the static
+ * text: the value (79 characters at most) goes through `regExpr`; no
+ * unconnected placeholder; autoSize has no effect; every line starts at the
+ * same x (aligned on the whole string's width); without useDisplayBg only the
+ * glyph cells get the background; no border.
+ */
+export function XRegText({ obj }: EdmWidgetProps) {
+  const { palette } = useEdmScreen();
+  const p = obj.props;
+  const g = geom(p);
+  const font = resolveFont(propStr(p, 'font'));
+  const raw = propText(p, 'value') ?? '';
+  const expanded = (useExpanded(raw) ?? '').slice(0, 79);
+  const alarmPv = pvProp(p, 'alarmPv');
+  const alarm = useEdmPv(alarmPv, `${REG}.alarmPv`);
+  const { visible, data: vis, defined: hasVis } = useVis(p, REG);
+  const phase = usePhase([...(alarmPv ? [alarm] : []), ...(hasVis ? [vis] : [])]);
+  const init = phase === 'init';
+  if (hasVis && !init) return null;
+  if (init && !visible) return null;
+  const fgSpec = colorSpec(p, 'fgColor');
+  const bgSpec = colorSpec(p, 'bgColor');
+  const live = init ? alarm : undefined;
+  const down = init && [alarm, vis].some((d) => d && !d.connected);
+  const fg = down
+    ? palette.disconnected()
+    : edmColor(palette, fgSpec, { data: live, alarmSensitive: propBool(p, 'fgAlarm') });
+  const bg = down
+    ? palette.disconnected()
+    : edmColor(palette, bgSpec, { data: live, alarmSensitive: propBool(p, 'bgAlarm') });
+  if (init && !hasVis && palette.isInvisible(fgSpec, alarm?.num)) return null;
+
+  const text = applyRegExpr(expanded, propStr(p, 'regExpr') ?? '');
+  const lines = text.replaceAll('\u0001', '\n').split('\n');
+  const fh = font.ascent + font.descent;
+  const W = textWidth(font, text);
+  const boxH = layoutStrings(font, raw || ' ', g.x, 0, g.w, 'left').boxH;
+  const stringY = g.y + font.ascent + idiv(g.h, 2) - idiv(boxH, 2);
+  const align = alignOf(p);
+  const sx =
+    align === 'left' ? g.x : align === 'center' ? g.x + idiv(g.w, 2) - idiv(W, 2) : g.x + g.w - W;
+  const useDisplayBg = propBool(p, 'useDisplayBg');
+  return (
+    <SvgBox x={g.x} y={g.y} w={g.w} h={g.h} clip>
+      {lines.map((l, i) =>
+        l ? (
+          <g key={i}>
+            {useDisplayBg ? null : (
+              <rect
+                x={sx}
+                y={stringY + i * fh - font.ascent}
+                width={textWidth(font, l)}
+                height={fh}
+                fill={bg}
+              />
+            )}
+            <TextRun font={font} text={l} x={sx} y={stringY + i * fh} fill={fg} />
+          </g>
+        ) : null
+      )}
     </SvgBox>
   );
 }
