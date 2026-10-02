@@ -54,6 +54,16 @@ const CMP: Record<string, Cmp> = {
   '<=': (v, a) => v <= a,
 };
 
+const blinkProp = (index: number) => `--edm-blink-${index}`;
+const colorOf = (s: EdmStaticColor) =>
+  s.blinkCss ? `var(${blinkProp(s.index)}, ${s.css})` : s.css;
+
+/** The colour a CSS value shows first (a blinking colour's first triplet). */
+export function firstColor(css: string): string {
+  const m = /^var\(--[\w-]+,\s*(.+)\)$/.exec(css);
+  return m ? m[1] : css;
+}
+
 const TOKEN = /"(?:[^"\\]|\\.)*"|>=|<=|!=|&&|\|\||[=<>:{}*]|[^\s"=<>:{}!&|*]+/g;
 
 export class EdmPalette {
@@ -68,18 +78,33 @@ export class EdmPalette {
     [AlarmSeverity.INVALID]: '#ffffff',
     [AlarmSeverity.DISCONNECTED]: '#ffffff',
   };
-  blinkMs = 0;
+  /** colors.list `blinkms` (EDM default 500). */
+  blinkMs = 500;
   /** The static named "invisible": objects whose colour evaluates to it are not drawn. */
   invisibleIndex = -1;
   /** Largest defined index + 1; EDM paints anything beyond as the invalid colour. */
   maxIndex = 0;
   readonly issues: string[] = [];
 
-  /** Colour of a static or rule by index; a rule without a value shows its first result. */
+  /**
+   * Colour of a static or rule by index; a rule without a value shows its
+   * first result. A blinking static gives `var(--edm-blink-N, first)`, which
+   * the screen root switches between its two colours every `blinkMs`.
+   */
   css(index: number, value?: number): string {
     const rule = this.rules.get(index);
     if (rule) return this.cssByName(evalRule(rule, value ?? 0)) ?? this.invalid();
-    return this.statics.get(index)?.css ?? this.invalid();
+    const s = this.statics.get(index);
+    return s ? colorOf(s) : this.invalid();
+  }
+
+  /** The blinking statics: the custom property each sets and its two colours. */
+  blinking(): { readonly prop: string; readonly on: string; readonly off: string }[] {
+    const out = [];
+    for (const s of this.statics.values()) {
+      if (s.blinkCss) out.push({ prop: blinkProp(s.index), on: s.css, off: s.blinkCss });
+    }
+    return out;
   }
 
   /** CSS of an .edl colour spec (value selects a rule colour). */
@@ -112,7 +137,8 @@ export class EdmPalette {
   cssByName(name: string): string | undefined {
     const target = this.aliases.get(name) ?? name;
     const idx = this.byName.get(target);
-    return idx === undefined ? undefined : this.statics.get(idx)?.css;
+    const s = idx === undefined ? undefined : this.statics.get(idx);
+    return s ? colorOf(s) : undefined;
   }
 
   /** EDM's special "disconnected" colour (colors.list `alarm { disconnected }`). */

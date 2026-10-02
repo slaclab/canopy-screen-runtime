@@ -7,7 +7,7 @@ import { Line } from './Line.js';
 import { ChoiceButton, MenuButton } from './MenuChoice.js';
 import { MotifSlider } from './MotifSlider.js';
 import { Rectangle } from './Rectangle.js';
-import { registerEdmWidget } from './registry.js';
+import { Unregistered, registerEdmWidget } from './registry.js';
 import { RelatedDisplay } from './RelatedDisplay.js';
 import { Arc, Byte, Circle } from './Shapes.js';
 import { Textupdate } from './Textupdate.js';
@@ -39,4 +39,6 @@ export function registerEdmBuiltins(): void {
   registerEdmWidget('activeMotifSliderClass', MotifSlider);
   registerEdmWidget('activeBarClass', Bar);
   registerEdmWidget('TextentryClass', Textentry);
+  // In .edl files, but registered by no EDM library: EDM draws nothing.
+  registerEdmWidget('activeVsBarClass', Unregistered);
 }

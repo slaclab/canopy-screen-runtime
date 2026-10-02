@@ -73,6 +73,15 @@ export function Placeholder({ obj }: EdmWidgetProps) {
   );
 }
 
+/**
+ * Classes that appear in .edl files but that EDM itself does not register
+ * (activeVsBarClass: no library provides it). EDM skips such an object, so
+ * nothing is drawn; the marker keeps it countable without being a placeholder.
+ */
+export function Unregistered({ obj }: EdmWidgetProps) {
+  return <div data-edm-unregistered={obj.className} hidden />;
+}
+
 interface BoundaryState {
   error: Error | null;
 }

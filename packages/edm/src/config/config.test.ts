@@ -1,6 +1,6 @@
 import { AlarmSeverity } from '@slaclab/canopy-client';
 import { describe, expect, it } from 'vitest';
-import { EdmPalette, parseColorSpec } from './colors.js';
+import { EdmPalette, firstColor, parseColorSpec } from './colors.js';
 import { cssFont, resolveFont, textWidth } from './fonts.js';
 import { motifShadows } from './motif.js';
 
@@ -51,6 +51,12 @@ describe('EdmPalette', () => {
     expect(p.cssByName('trace0')).toBe('#e00000');
     expect(p.blinkMs).toBe(750);
     expect(p.issues).toEqual([]);
+  });
+
+  it('gives blinking statics a custom property the screen switches', () => {
+    expect(p.css(81)).toBe('var(--edm-blink-81, #ff0000)');
+    expect(firstColor(p.css(81))).toBe('#ff0000');
+    expect(p.blinking()).toContainEqual({ prop: '--edm-blink-81', on: '#ff0000', off: '#7f0000' });
   });
 
   it('evaluates rules: first match wins, else the first result', () => {

@@ -4,6 +4,8 @@
 // bevel from this, e.g. white → #cccccc / #999999, #c8c8c8 → #e8e8e8 / #6f6f6f,
 // which matches EDM screenshots to ±1.
 
+import { firstColor } from './colors.js';
+
 const MAX = 65535;
 const LITE_THRESHOLD = 0.93 * MAX;
 const DARK_THRESHOLD = 0.2 * MAX;
@@ -15,7 +17,8 @@ const F = {
 };
 
 function rgb16(css: string): [number, number, number] {
-  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(css);
+  // Motif computes the shadows once, from the colour the widget starts with.
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(firstColor(css));
   if (!m) return [0xc8c8, 0xc8c8, 0xc8c8];
   return [m[1], m[2], m[3]].map((h) => parseInt(h, 16) * 257) as [number, number, number];
 }

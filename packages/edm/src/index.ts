@@ -9,7 +9,7 @@ export * from './model.js';
 export { parseEdl } from './parser/edl.js';
 export { registerFileParser, getFileParser } from './parser/registry.js';
 export type { EdmFileParser } from './parser/registry.js';
-export { EdmPalette, evalRule, parseColorSpec } from './config/colors.js';
+export { EdmPalette, evalRule, firstColor, parseColorSpec } from './config/colors.js';
 export type {
   EdmColorRule,
   EdmColorSpec,
@@ -41,6 +41,7 @@ export type { LocalConnection } from './pv/local.js';
 export type { EdmPvConnection, EdmPvData, EdmPvListener, EdmPvType } from './pv/types.js';
 export { EdmScreen, EdmSubScreen, screenFonts, screenSize } from './screen/EdmScreen.js';
 export { docCache, edlName, useEdmDoc } from './screen/docs.js';
+export { freezeEdmBlink } from './screen/blink.js';
 export type { EdmDocState } from './screen/docs.js';
 export type { EdmScreenProps } from './screen/EdmScreen.js';
 export {
@@ -64,6 +65,7 @@ export {
   registeredEdmClasses,
   EdmObjectView,
   Placeholder,
+  Unregistered,
   WidgetBoundary,
 } from './widgets/registry.js';
 export type { EdmWidgetComponent, EdmWidgetProps } from './widgets/registry.js';

@@ -1,5 +1,5 @@
 import { AlarmSeverity } from '@slaclab/canopy-client';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { EdmPalette } from '../config/colors.js';
 import { resolveFont } from '../config/fonts.js';
@@ -9,12 +9,14 @@ import { localConnection } from '../pv/local.js';
 import type { EdmPvConnection, EdmPvData } from '../pv/types.js';
 import { registerEdmBuiltins } from '../widgets/builtins.js';
 import { registerEdmWidget } from '../widgets/registry.js';
+import { freezeEdmBlink } from './blink.js';
 import { EdmScreen } from './EdmScreen.js';
 
 const PALETTE = EdmPalette.parse(`4 0 0
 static 4 "grey-4" { 48059 48059 48059 }
 static 14 "black-14" { 0 0 0 }
 static 15 "green" { 0 65535 0 }
+static 83 "blu-blink" { 0 65535 0 0 32762 0 }
 static 20 "Monitor: MAJOR" { 65535 0 0 }
 static 35 "Monitor: MINOR" { 65535 65535 0 }
 static 0 "Disconn/Invalid" { 65535 65535 65535 }
@@ -78,6 +80,28 @@ beforeAll(() => registerEdmBuiltins());
 afterEach(cleanup);
 
 describe('EdmScreen', () => {
+  it('blinks colours with two triplets every blinkms; the phase can be held', () => {
+    vi.useFakeTimers();
+    show(
+      HEAD +
+        obj(
+          'activeRectangleClass',
+          'x 1\ny 1\nw 9\nh 9\nlineColor index 83\nfill\nfillColor index 83'
+        )
+    );
+    const root = screen.getByTestId('screen-root');
+    const fill = () => root.querySelector('rect')?.getAttribute('fill');
+    expect(fill()).toBe('var(--edm-blink-83, #00ff00)');
+    expect(root.style.getPropertyValue('--edm-blink-83')).toBe('#00ff00');
+    act(() => vi.advanceTimersByTime(500));
+    expect(root.style.getPropertyValue('--edm-blink-83')).toBe('#007f00');
+    act(() => freezeEdmBlink(0));
+    act(() => vi.advanceTimersByTime(500));
+    expect(root.style.getPropertyValue('--edm-blink-83')).toBe('#00ff00');
+    act(() => freezeEdmBlink(null));
+    vi.useRealTimers();
+  });
+
   it('is exactly w x h on the display background', () => {
     show(HEAD);
     const root = screen.getByTestId('screen-root');
@@ -91,8 +115,8 @@ describe('EdmScreen', () => {
       throw new Error('boom');
     });
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    show(HEAD + obj('activeMeterClass', 'x 1\ny 2\nw 30\nh 20') + obj('explodingClass', 'x 5'));
-    expect(screen.getByTestId('widget-placeholder').textContent).toBe('activeMeterClass');
+    show(HEAD + obj('someUnknownClass', 'x 1\ny 2\nw 30\nh 20') + obj('explodingClass', 'x 5'));
+    expect(screen.getByTestId('widget-placeholder').textContent).toBe('someUnknownClass');
     expect(screen.getByTestId('widget-error').getAttribute('data-edm-class')).toBe(
       'explodingClass'
     );

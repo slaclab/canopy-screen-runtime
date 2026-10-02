@@ -14,6 +14,7 @@ import type { EdmPvLayer } from '../pv/layer.js';
 import { EdmObjectView } from '../widgets/registry.js';
 import { EdmScreenContext, useEdmScreen } from './context.js';
 import type { EdmOpenDisplayRequest, EdmScreenEnv } from './context.js';
+import { useBlinkPhase } from './blink.js';
 import { docCache } from './docs.js';
 
 export { screenFonts } from './fonts.js';
@@ -68,6 +69,11 @@ export function EdmScreen({
   const { w, h } = screenSize(doc);
   const { bg, fg } = screenColors(doc, palette);
   const docs = useMemo(() => (source ? docCache(source) : undefined), [source]);
+  // Blinking colours are custom properties set here, so a blink restyles the
+  // screen without re-rendering a single object.
+  const blinking = useMemo(() => palette.blinking(), [palette]);
+  const phase = useBlinkPhase(palette.blinkMs, blinking.length > 0);
+  const blinkVars = Object.fromEntries(blinking.map((b) => [b.prop, phase ? b.off : b.on]));
   const env: EdmScreenEnv = useMemo(
     () => ({
       palette,
@@ -99,6 +105,7 @@ export function EdmScreen({
           // EDM text is drawn on an unscaled pixel grid.
           fontSynthesis: 'none',
           userSelect: 'none',
+          ...blinkVars,
         }}
       >
         {doc.objects.map((o, i) => (
