@@ -13,6 +13,7 @@ import {
   EdmScreen,
   batchedPvServiceConnection,
   calcConnection,
+  edlName,
   httpDisplaySource,
   localConnection,
   parseCalcList,
@@ -155,7 +156,7 @@ export function EdlPage({ edmBaseUrl }: { edmBaseUrl: string }) {
       // Resolve like EDM (relative to the referring screen), then open the
       // canonical /edl/<path> URL in a new tab.
       const win = window.open('', '_blank');
-      const name = /\.[a-z]+$/i.test(req.file) ? req.file : `${req.file}.edl`;
+      const name = edlName(req.file);
       source.load(name, req.fromPath).then(
         (found) => {
           const q = new URLSearchParams();

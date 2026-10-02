@@ -77,12 +77,15 @@ The layout follows Diamond's cs-web-lib, so the package could move upstream late
   harnesses hold the phase with `globalThis.__canopyEdmBlinkPhase` or
   `freezeEdmBlink()`.
 
-One EDM behaviour is not reproduced:
+Two EDM behaviours are not reproduced:
 
 - **Partial repaints.** When a dynamic object updates, EDM repaints the region 5 px
   around it with only the objects that intersect the object's own box, which erases
   the edges of close neighbours (a missing bevel row, a clipped alarm border) until
   the next full expose. The renderer draws every object whole.
+- **Unknown font tags.** EDM finds no font for a tag that is not in fonts.list and
+  draws with whatever font its shared graphics context last held (and default
+  metrics). The renderer substitutes the nearest Helvetica of the same weight.
 
 ## Implemented classes
 
