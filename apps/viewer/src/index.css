@@ -93,6 +93,11 @@ body,
   font-family: 'IBM Plex Mono', monospace;
 }
 
+.screen-card__variants {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #8d8d8d);
+}
+
 .screen-card__note {
   font-size: 0.75rem;
   color: var(--cds-support-warning, #f1c21b);
@@ -119,6 +124,52 @@ body,
   word-break: break-word;
   font-size: 0.8125rem;
   color: var(--cds-text-secondary, #c6c6c6);
+}
+
+/* Variant switcher (screen page header) */
+.viewer-variant {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: 100%;
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary, #c6c6c6);
+}
+
+.viewer-variant__label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.viewer-variant select {
+  height: 2rem;
+  padding: 0 0.5rem;
+  border: none;
+  border-bottom: 1px solid var(--cds-border-strong-01, #6f6f6f);
+  background: var(--cds-field-01, #262626);
+  color: var(--cds-text-primary, #f4f4f4);
+  font: inherit;
+}
+
+.viewer-variant__source {
+  font-size: 0.75rem;
+  color: var(--cds-text-helper, #a8a8a8);
+}
+
+.viewer-variant__action {
+  height: 2rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--cds-border-subtle, #525252);
+  background: transparent;
+  color: var(--cds-link-inverse, #78a9ff);
+  font: inherit;
+  cursor: pointer;
+}
+
+.viewer-variant__action:hover {
+  background: var(--cds-layer-hover-01, #333);
 }
 
 /* /edl/<path>: the EDM window at the top-left, nothing else (EDM has no

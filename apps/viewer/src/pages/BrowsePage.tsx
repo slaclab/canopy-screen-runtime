@@ -1,44 +1,56 @@
-// Browse/search over the content manifest: title/category/id filter, link cards.
+// Browse/search over the content manifest: title/category/id filter, one
+// link card per screen (its variants listed when it has several).
 
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search } from '@carbon/react';
 import { AppHeader } from '@slaclab/canopy-shell';
-import type { Manifest, ManifestScreen } from '../api.js';
+import type { Manifest } from '../api.js';
 import { fetchManifest } from '../api.js';
 import { ErrorPanel } from '../ErrorPanel.js';
+import type { LogicalScreen } from '../variants.js';
+import { groupScreens, notViewable, variantLabel } from '../variants.js';
 
-function matches(entry: ManifestScreen, query: string): boolean {
+function matches(screen: LogicalScreen, query: string): boolean {
   if (!query) return true;
   const q = query.toLowerCase();
   return (
-    entry.title.toLowerCase().includes(q) ||
-    entry.category.toLowerCase().includes(q) ||
-    entry.id.toLowerCase().includes(q)
+    screen.variants.some((v) => v.entry.title.toLowerCase().includes(q)) ||
+    screen.category.toLowerCase().includes(q) ||
+    screen.id.toLowerCase().includes(q)
   );
 }
 
-function ScreenCard({ entry }: { entry: ManifestScreen }) {
+function ScreenCard({ screen }: { screen: LogicalScreen }) {
+  const first = screen.variants[0];
+  const viewable = screen.variants.some((v) => !notViewable(v));
   const body = (
     <>
-      <span className="screen-card__title">{entry.title}</span>
+      <span className="screen-card__title">{first.entry.title}</span>
       <span className="screen-card__meta">
-        {entry.category} / {entry.id}
+        {screen.category} / {screen.id}
       </span>
-      {entry.kind !== 'ir' && (
-        <span className="screen-card__note">code screen — not yet viewable</span>
+      {screen.variants.length > 1 && (
+        <span className="screen-card__variants">
+          {screen.variants.map(variantLabel).join(' / ')}
+        </span>
+      )}
+      {!viewable && (
+        <span className="screen-card__note">
+          {first.impl === 'react' ? 'code' : variantLabel(first)} screen — not yet viewable
+        </span>
       )}
     </>
   );
 
-  if (entry.kind !== 'ir') {
+  if (!viewable) {
     return <div className="screen-card screen-card--disabled">{body}</div>;
   }
   return (
     <Link
       className="screen-card"
       // Encode each segment but keep slashes as separators so the splat route matches.
-      to={`/s/${encodeURIComponent(entry.category)}/${entry.id
+      to={`/s/${encodeURIComponent(screen.category)}/${screen.id
         .split('/')
         .map(encodeURIComponent)
         .join('/')}`}
@@ -68,10 +80,8 @@ export function BrowsePage({ screensBaseUrl }: { screensBaseUrl: string }) {
     };
   }, [screensBaseUrl]);
 
-  const visible = useMemo(
-    () => (manifest?.screens ?? []).filter((entry) => matches(entry, query)),
-    [manifest, query]
-  );
+  const screens = useMemo(() => groupScreens(manifest?.screens ?? []), [manifest]);
+  const visible = useMemo(() => screens.filter((s) => matches(s, query)), [screens, query]);
 
   return (
     <div className="viewer-page">
@@ -89,8 +99,8 @@ export function BrowsePage({ screensBaseUrl }: { screensBaseUrl: string }) {
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}
             />
             <div className="screen-card-grid">
-              {visible.map((entry) => (
-                <ScreenCard key={`${entry.category}/${entry.id}`} entry={entry} />
+              {visible.map((s) => (
+                <ScreenCard key={s.key} screen={s} />
               ))}
               {visible.length === 0 && <p>No screens match “{query}”.</p>}
             </div>

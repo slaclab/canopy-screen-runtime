@@ -84,7 +84,7 @@ function renderAt(path: string) {
   return render(
     <ServicesContext.Provider value={services}>
       <MemoryRouter initialEntries={[path]}>
-        <App screensBaseUrl="" edmBaseUrl="/displays/v1" />
+        <App screensBaseUrl="" edmBaseUrl="/displays/v1/edm" />
       </MemoryRouter>
     </ServicesContext.Provider>
   );
@@ -93,8 +93,8 @@ function renderAt(path: string) {
 describe('/edl/<path>', () => {
   it('renders the .edl at its EDM size with query macros; render= is not a macro', async () => {
     const fetchImpl = stubDisplays({
-      '/displays/v1/files/misc/test.edl': EDL,
-      '/displays/v1/config/colors.list': COLORS,
+      '/displays/v1/edm/files/misc/test.edl': EDL,
+      '/displays/v1/edm/config/colors.list': COLORS,
     });
     renderAt('/edl/misc/test.edl?P=DEV1&render=carbon');
     const root = await screen.findByTestId('screen-root');
@@ -104,12 +104,12 @@ describe('/edl/<path>', () => {
     expect(screen.getByText('Device DEV1 $(render)')).toBeTruthy();
     expect(screen.getByTestId('widget-placeholder').textContent).toBe('someFutureClass');
     expect(fetchImpl.mock.calls.map(([u]) => String(u))).toContain(
-      '/displays/v1/files/misc/test.edl'
+      '/displays/v1/edm/files/misc/test.edl'
     );
   });
 
   it('shows an explicit error when the display cannot be found', async () => {
-    stubDisplays({ '/displays/v1/config/colors.list': COLORS });
+    stubDisplays({ '/displays/v1/edm/config/colors.list': COLORS });
     renderAt('/edl/misc/missing.edl');
     expect((await screen.findByRole('alert')).textContent).toMatch(/misc\/missing\.edl/);
   });
