@@ -3,14 +3,29 @@
 import type { ScreenJSON } from '@slaclab/canopy-screen-ir';
 import type { ResolveAsset, ResolveScreen } from '@slaclab/canopy-screen-runtime';
 
-/** One entry of the content repo's generated manifest.json. */
+/**
+ * One entry of the content repo's generated manifest.json: one implementation
+ * of a screen. Entries sharing category and id are variants of one screen
+ * (variants.ts).
+ */
 export interface ManifestScreen {
   id: string;
-  /** 'ir' renders here; 'wrapper'/'code' screens are code-based (not yet viewable). */
+  /**
+   * 'ir' renders here; 'wrapper'/'code' screens are code-based (not yet
+   * viewable); 'edl' is an EDM display drawn by @slaclab/canopy-edm.
+   */
   kind: string;
+  /** 'edm' | 'pydm' | 'react'; absent: implied by kind (edl → edm, ui → pydm, else react). */
+  impl?: string;
+  /** e.g. 'faithful' for an .edl drawn as EDM draws it; canopy-screens writes null for none. */
+  look?: string | null;
   title: string;
   category: string;
-  /** Repo-relative path of the document, e.g. screens/examples/x.screen.json */
+  /**
+   * Repo-relative path of the document, e.g. screens/examples/x.screen.json;
+   * for an edm variant, the display's path under the display-file endpoint
+   * (the /edl/<path> path).
+   */
   path: string;
   macros?: { name: string; default?: string; description?: string }[];
   tags?: string[];

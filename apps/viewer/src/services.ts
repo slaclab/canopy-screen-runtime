@@ -16,6 +16,11 @@ import {
   createLocalAwareFormulaSubscriber,
 } from '@slaclab/canopy-screen-runtime';
 import type { ViewerConfig } from './config.js';
+import { screenPolicyLoader } from './policy.js';
+import type { VariantPreferences } from './preferences.js';
+import { browserPreferences } from './preferences.js';
+import type { ScreenPolicy } from './variants.js';
+import { EMPTY_POLICY } from './variants.js';
 
 export interface ViewerServices {
   pv: PVService;
@@ -33,9 +38,24 @@ export interface ViewerServices {
    * own sockets so one subscribe message carries a whole screen's channels.
    */
   createHare: (() => HarePVService) | null;
+  /** The site's screen variant policy (default: none). Never rejects. */
+  screenPolicy?: () => Promise<ScreenPolicy>;
+  /** This user's own variant choices (default: this browser's localStorage). */
+  preferences?: VariantPreferences;
 }
 
+const noPolicy = () => Promise.resolve(EMPTY_POLICY);
+
 export function createServices(config: ViewerConfig): ViewerServices {
+  const screenPolicy =
+    config.screenPolicy === 'magpie'
+      ? screenPolicyLoader({
+          canopyBaseUrl: config.canopyBaseUrl,
+          apiKey: config.canopyApiKey,
+          slug: config.screenPolicySlug,
+        })
+      : noPolicy;
+  const preferences = browserPreferences;
   // loc:// locals are page-side state (EDM LOC semantics): widgets write and
   // rules read them without a gateway, in every pv mode.
   const locals = new LocalPVService();
@@ -61,6 +81,8 @@ export function createServices(config: ViewerConfig): ViewerServices {
       locals,
       hare,
       createHare,
+      screenPolicy,
+      preferences,
     };
   }
 
@@ -72,6 +94,8 @@ export function createServices(config: ViewerConfig): ViewerServices {
     locals,
     hare: null,
     createHare: null,
+    screenPolicy,
+    preferences,
   };
 }
 
