@@ -34,13 +34,15 @@ interface Wave {
  *
  * Hare reads a socket's subscribe messages one at a time and answers each
  * (with the channel metadata that tells integers from doubles) only when
- * every channel in it has connected or its connection timeout (10 s) has
- * passed; live channels in the meantime get values without metadata. One
+ * every channel in it has been seeded; a dead CA channel costs two timeouts
+ * (value, then describe: about 10 s with the default 5 s), and live channels
+ * in the meantime get values without metadata (slaclab/canopy#129). One
  * message per channel would queue every channel behind each dead one. So the
  * channels a render asks for share one socket and one message, and channels
  * that report a value there before their metadata (live ones held back by a
  * dead neighbour) are asked for again on a fresh socket, which answers at
  * once. Values without metadata are never shown: EDM's formatting needs it.
+ * Once Hare answers subscribes concurrently, plain pvServiceConnection will do.
  */
 export function batchedPvServiceConnection(
   create: () => EdmHareLike,
