@@ -38,6 +38,13 @@ The layout follows Diamond's cs-web-lib, so the package could move upstream late
   the displayed screen, else the embedded file it came through), which the harness
   uses to check PV parity. Writes go through `layer.put()` (Hare's REST PUT for EPICS
   channels).
+- **Display source** (`httpDisplaySource(base, { apiKey })`): `.edl` files, the images
+  they draw and the site's `*.list` config come from a display-file endpoint
+  (`{base}/files/<path>?relativeTo=<referring file>`, `{base}/config/<name>.list`), which
+  searches like EDM's `EDMDATAFILES` and names the file it found in `X-Display-Path`.
+  With an API key every request carries `X-API-Key` (never in the URL), so PNG and GIF
+  images are fetched through the source too, not handed to `<img src>`. Caching is the
+  browser's: the endpoint sends ETags and asks for revalidation.
 - **Hare batching**: Hare answers a socket's subscribe messages one at a time and holds
   each until all its channels are seeded (about 10 s per dead channel,
   slaclab/canopy#129). The EDM page therefore subscribes a whole render in one message

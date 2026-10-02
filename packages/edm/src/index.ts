@@ -73,5 +73,10 @@ export {
 } from './widgets/registry.js';
 export type { EdmWidgetComponent, EdmWidgetProps } from './widgets/registry.js';
 export { registerEdmBuiltins } from './widgets/builtins.js';
-export { httpDisplaySource, parseDisplay, EdmHttpError } from './loader/source.js';
-export type { EdmDisplaySource } from './loader/source.js';
+export {
+  displayNameInUrl,
+  httpDisplaySource,
+  parseDisplay,
+  EdmHttpError,
+} from './loader/source.js';
+export type { EdmDisplaySource, HttpDisplaySourceOptions } from './loader/source.js';

@@ -31,18 +31,61 @@ export function imageName(file: string, ext: string): string {
   return base.includes('.') ? file : `${file}${ext}`;
 }
 
-/** The URL of an image named by an object, found from the displayed screen as EDM does. */
-function useImageUrl(file: string | undefined, ext: string): string | null {
+/**
+ * An image named by an object, found from the displayed screen as EDM does,
+ * fetched through the display source (which carries the credentials) and
+ * decoded by `decode`; `dispose` releases what decode made. A missing or
+ * undecodable file gives null. `decode` and `dispose` must be stable.
+ */
+function useImageFile<T>(
+  file: string | undefined,
+  ext: string,
+  decode: (blob: Blob) => Promise<T>,
+  dispose?: (made: T) => void
+): T | null {
   const { source, ancestors, path } = useEdmScreen();
   const name = useExpanded(file ?? '')?.trim() ?? '';
-  if (!name || !source) return null;
-  return source.url(imageName(name, ext), ancestors[0] ?? path);
+  const from = ancestors[0] ?? path;
+  const key = name && source ? `${from}|${imageName(name, ext)}` : '';
+  const [got, setGot] = useState<{ key: string; made: T } | null>(null);
+  useEffect(() => {
+    if (!key || !source) return;
+    let cancelled = false;
+    let made: { v: T } | null = null;
+    source
+      .image(imageName(name, ext), from)
+      .then(decode)
+      .then(
+        (v) => {
+          if (cancelled) {
+            dispose?.(v);
+            return;
+          }
+          made = { v };
+          setGot({ key, made: v });
+        },
+        () => {}
+      );
+    return () => {
+      cancelled = true;
+      if (made) dispose?.(made.v);
+    };
+  }, [key, source, name, ext, from, decode, dispose]);
+  return got && got.key === key ? got.made : null;
 }
+
+const objectUrl = (blob: Blob) => Promise.resolve(URL.createObjectURL(blob));
+const revokeUrl = (url: string) => URL.revokeObjectURL(url);
+const gifOf = async (blob: Blob): Promise<GifImage> => {
+  const gif = decodeGif(new Uint8Array(await blob.arrayBuffer()));
+  if (gif.palette.length === 0) throw new Error('GIF without a global colour table');
+  return gif;
+};
 
 export function PngImage({ obj }: EdmWidgetProps) {
   const { displayBg } = useEdmScreen();
   const { x, y } = geom(obj.props);
-  const url = useImageUrl(propStr(obj.props, 'file'), '.png');
+  const url = useImageFile(propStr(obj.props, 'file'), '.png', objectUrl, revokeUrl);
   const [failed, setFailed] = useState<string | null>(null);
   if (!url || failed === url) return null;
   return (
@@ -75,24 +118,8 @@ function rgbOf(css: string): [number, number, number] {
 export function GifImageView({ obj }: EdmWidgetProps) {
   const { displayBg } = useEdmScreen();
   const { x, y } = geom(obj.props);
-  const url = useImageUrl(propStr(obj.props, 'file'), '.gif');
-  const [img, setImg] = useState<{ url: string; gif: GifImage } | null>(null);
+  const gif = useImageFile(propStr(obj.props, 'file'), '.gif', gifOf);
   const canvas = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    if (!url) return;
-    let cancelled = false;
-    fetch(url)
-      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((b) => decodeGif(new Uint8Array(b)))
-      .then(
-        (gif) => !cancelled && gif.palette.length > 0 && setImg({ url, gif }),
-        () => {}
-      );
-    return () => {
-      cancelled = true;
-    };
-  }, [url]);
-  const gif = img && img.url === url ? img.gif : null;
   useEffect(() => {
     const c = canvas.current;
     const ctx = c?.getContext('2d');
