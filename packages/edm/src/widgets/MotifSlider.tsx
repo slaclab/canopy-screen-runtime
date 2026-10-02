@@ -28,10 +28,21 @@ import type { EdmWidgetProps } from './registry.js';
 import { Unconnected } from './Rectangle.js';
 import { SvgBox, TextRun, colorSpec, edmColor, geom, idiv, motifOrigin, pvProp } from './shared.js';
 
-const CLS = 'activeMotifSliderClass';
 const THUMB = 30;
 
-export function MotifSlider({ obj }: EdmWidgetProps) {
+/**
+ * The Motif slider; activeTriumfSliderClass (TRIUMF's copy, with a selection
+ * gate and sensitivity zoom EDM only shows once used) looks the same.
+ */
+export function makeMotifSlider(CLS: string) {
+  return function MotifSliderWidget({ obj }: EdmWidgetProps) {
+    return <MotifSliderBody obj={obj} cls={CLS} />;
+  };
+}
+
+export const MotifSlider = makeMotifSlider('activeMotifSliderClass');
+
+function MotifSliderBody({ obj, cls: CLS }: EdmWidgetProps & { cls: string }) {
   const { palette } = useEdmScreen();
   const p = obj.props;
   const g = geom(p);

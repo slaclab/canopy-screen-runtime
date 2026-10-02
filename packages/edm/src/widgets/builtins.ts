@@ -5,7 +5,9 @@ import { Button, ExitButton, MessageButton, ShellCmd } from './Buttons.js';
 import { Group } from './Group.js';
 import { Line } from './Line.js';
 import { ChoiceButton, MenuButton } from './MenuChoice.js';
-import { MotifSlider } from './MotifSlider.js';
+import { MotifSlider, makeMotifSlider } from './MotifSlider.js';
+import { RadioBox } from './Radio.js';
+import { RampButton, UpdownButton } from './RampUpdown.js';
 import { Rectangle } from './Rectangle.js';
 import { Unregistered, registerEdmWidget } from './registry.js';
 import { RelatedDisplay } from './RelatedDisplay.js';
@@ -46,6 +48,10 @@ export function registerEdmBuiltins(): void {
   registerEdmWidget('activeFreezeButtonClass', FreezeButton);
   registerEdmWidget('mmvClass', Mmv);
   registerEdmWidget('activeSliderClass', Slider);
+  registerEdmWidget('activeRampButtonClass', RampButton);
+  registerEdmWidget('activeUpdownButtonClass', UpdownButton);
+  registerEdmWidget('activeRadioButtonClass', RadioBox);
+  registerEdmWidget('activeTriumfSliderClass', makeMotifSlider('activeTriumfSliderClass'));
   // In .edl files, but registered by no EDM library: EDM draws nothing.
   registerEdmWidget('activeVsBarClass', Unregistered);
 }
