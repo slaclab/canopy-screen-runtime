@@ -7,6 +7,8 @@ import {
   useSyncExternalStore,
 } from 'react';
 import type { EdmPalette } from '../config/colors.js';
+import type { EdmDisplaySource } from '../loader/source.js';
+import type { EdmDocument } from '../model.js';
 import { expandMacros } from '../macros.js';
 import type { EdmMacros } from '../macros.js';
 import type { EdmPvLayer } from '../pv/layer.js';
@@ -36,6 +38,28 @@ export interface EdmScreenEnv {
   readonly openDisplay?: (req: EdmOpenDisplayRequest) => void;
   /** Close this display (exit button, closeAction); the host decides how. */
   readonly closeDisplay?: () => void;
+  /** Where embedded displays, symbol files and images come from. */
+  readonly source?: EdmDisplaySource;
+  /** The page's parsed-file cache (shared by every embedded display). */
+  readonly docs?: EdmDocCache;
+  /**
+   * '' for the displayed screen; inside an embedded display or symbol file,
+   * the chain of files it came through (recorded with its PV subscriptions).
+   */
+  readonly scope: string;
+  /** Paths of the displays this one is embedded in, outermost first (recursion guard). */
+  readonly ancestors: readonly string[];
+}
+
+/** Parsed display files of one page, loaded once each. */
+export interface EdmDocCache {
+  /** `relativeTo` is the referring file's path; resolves to the file found and its document. */
+  load(file: string, relativeTo: string): Promise<EdmLoadedDoc>;
+}
+
+export interface EdmLoadedDoc {
+  readonly path: string;
+  readonly doc: EdmDocument;
 }
 
 export const EdmScreenContext = createContext<EdmScreenEnv | null>(null);
@@ -60,8 +84,8 @@ export function useEdmPv(raw: string | undefined, by: string): EdmPvData | undef
   const env = useEdmScreen();
   const expanded = raw?.trim() ? expandMacros(raw.trim(), env.macros) : '';
   const store = useMemo(
-    () => new PvStore(env.pv, raw?.trim() ?? '', expanded, by),
-    [env.pv, raw, expanded, by]
+    () => new PvStore(env.pv, raw?.trim() ?? '', expanded, by, env.scope),
+    [env.pv, raw, expanded, by, env.scope]
   );
   return useSyncExternalStore(store.subscribe, store.get, store.get);
 }
@@ -73,20 +97,28 @@ class PvStore {
   private readonly raw: string;
   private readonly expanded: string;
   private readonly by: string;
+  private readonly scope: string;
 
-  constructor(layer: EdmPvLayer, raw: string, expanded: string, by: string) {
+  constructor(layer: EdmPvLayer, raw: string, expanded: string, by: string, scope: string) {
     this.layer = layer;
     this.raw = raw;
     this.expanded = expanded;
     this.by = by;
+    this.scope = scope;
   }
 
   subscribe = (onChange: () => void) => {
     if (!this.expanded) return () => {};
-    return this.layer.subscribe(this.raw, this.expanded, this.by, (d) => {
-      this.data = d;
-      onChange();
-    });
+    return this.layer.subscribe(
+      this.raw,
+      this.expanded,
+      this.by,
+      (d) => {
+        this.data = d;
+        onChange();
+      },
+      this.scope
+    );
   };
 
   get = () => this.data;

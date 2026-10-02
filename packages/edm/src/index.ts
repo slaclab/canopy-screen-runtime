@@ -39,7 +39,9 @@ export { calcConnection, parseCalcList, parseCalcName } from './pv/calc.js';
 export { CalcError, compileCalc, performCalc } from './pv/calcExpr.js';
 export type { LocalConnection } from './pv/local.js';
 export type { EdmPvConnection, EdmPvData, EdmPvListener, EdmPvType } from './pv/types.js';
-export { EdmScreen, screenFonts, screenSize } from './screen/EdmScreen.js';
+export { EdmScreen, EdmSubScreen, screenFonts, screenSize } from './screen/EdmScreen.js';
+export { docCache, edlName, useEdmDoc } from './screen/docs.js';
+export type { EdmDocState } from './screen/docs.js';
 export type { EdmScreenProps } from './screen/EdmScreen.js';
 export {
   EdmScreenContext,
@@ -49,7 +51,13 @@ export {
   usePhase,
   UNCONNECTED_MS,
 } from './screen/context.js';
-export type { EdmOpenDisplayRequest, EdmPhase, EdmScreenEnv } from './screen/context.js';
+export type {
+  EdmDocCache,
+  EdmLoadedDoc,
+  EdmOpenDisplayRequest,
+  EdmPhase,
+  EdmScreenEnv,
+} from './screen/context.js';
 export {
   registerEdmWidget,
   getEdmWidget,

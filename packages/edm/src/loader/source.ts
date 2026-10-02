@@ -15,6 +15,8 @@ import type { EdmDocument } from '../model.js';
 export interface EdmDisplaySource {
   /** Fetch a display file; `relativeTo` is the path of the referring screen. */
   load(path: string, relativeTo?: string): Promise<{ path: string; text: string }>;
+  /** URL of a file found the same way, for the browser to fetch itself (images). */
+  url(path: string, relativeTo?: string): string;
   config(name: 'colors.list' | 'fonts.list' | 'calc.list'): Promise<string>;
 }
 
@@ -29,10 +31,14 @@ export class EdmHttpError extends Error {
 export function httpDisplaySource(base: string, fetchFn: typeof fetch = fetch): EdmDisplaySource {
   const root = base.replace(/\/+$/, '');
   const enc = (p: string) => p.split('/').map(encodeURIComponent).join('/');
+  const url = (path: string, relativeTo?: string) => {
+    const q = relativeTo ? `?relativeTo=${encodeURIComponent(relativeTo)}` : '';
+    return `${root}/files/${enc(path.replace(/^\/+/, ''))}${q}`;
+  };
   return {
+    url,
     async load(path, relativeTo) {
-      const q = relativeTo ? `?relativeTo=${encodeURIComponent(relativeTo)}` : '';
-      const res = await fetchFn(`${root}/files/${enc(path.replace(/^\/+/, ''))}${q}`);
+      const res = await fetchFn(url(path, relativeTo));
       if (!res.ok) throw new EdmHttpError(`${path}: HTTP ${res.status}`, res.status);
       return { path: res.headers.get('X-Display-Path') ?? path, text: await res.text() };
     },

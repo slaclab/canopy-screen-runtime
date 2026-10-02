@@ -149,8 +149,8 @@ export function EdlPage({ edmBaseUrl }: { edmBaseUrl: string }) {
     if (!window.closed && window.history.length > 1) window.history.back();
   }, []);
 
+  const source = useMemo(() => httpDisplaySource(edmBaseUrl), [edmBaseUrl]);
   const openDisplay = useMemo(() => {
-    const source = httpDisplaySource(edmBaseUrl);
     return (req: EdmOpenDisplayRequest) => {
       // Resolve like EDM (relative to the referring screen), then open the
       // canonical /edl/<path> URL in a new tab.
@@ -172,7 +172,7 @@ export function EdlPage({ edmBaseUrl }: { edmBaseUrl: string }) {
         }
       );
     };
-  }, [edmBaseUrl, closeDisplay]);
+  }, [source, closeDisplay]);
 
   if (state.status === 'loading')
     return <div className="edl-page edl-loading">Loading {path}…</div>;
@@ -187,6 +187,7 @@ export function EdlPage({ edmBaseUrl }: { edmBaseUrl: string }) {
         path={state.path}
         openDisplay={openDisplay}
         closeDisplay={closeDisplay}
+        source={source}
       />
     </div>
   );

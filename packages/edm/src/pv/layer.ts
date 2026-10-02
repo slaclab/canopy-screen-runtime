@@ -31,6 +31,11 @@ export interface EdmPvSubscription {
   readonly name: string;
   /** "<EDM class>.<property>" of the subscriber. */
   readonly by: string;
+  /**
+   * '' for the displayed screen itself; for an object inside an embedded
+   * display or symbol file, the chain of files it came through.
+   */
+  readonly scope: string;
   /** False when no connection serves the scheme (placeholder data only). */
   readonly served: boolean;
 }
@@ -50,13 +55,20 @@ export class EdmPvLayer {
    * Subscribe to an expanded EDM PV string. Unserved schemes (CALC\ in M0)
    * stay disconnected but are still recorded.
    */
-  subscribe(raw: string, expanded: string, by: string, listener: EdmPvListener): () => void {
+  subscribe(
+    raw: string,
+    expanded: string,
+    by: string,
+    listener: EdmPvListener,
+    scope = ''
+  ): () => void {
     const ref = parsePvName(expanded);
     if (!ref) return () => {};
     const conn = this.connections.get(ref.scheme);
-    const key = `${expanded}\u0000${by}`;
+    const key = `${expanded}\u0000${by}\u0000${scope}`;
     if (!this.log.has(key)) {
-      this.log.set(key, { raw, expanded, scheme: ref.scheme, name: ref.name, by, served: !!conn });
+      const sub = { raw, expanded, scheme: ref.scheme, name: ref.name, by, served: !!conn, scope };
+      this.log.set(key, sub);
     }
     if (!this.state.has(expanded)) this.state.set(expanded, undefined);
     if (!conn) {
