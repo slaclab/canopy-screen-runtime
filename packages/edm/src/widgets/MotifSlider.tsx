@@ -26,7 +26,7 @@ import { propBool, propNum, propStr } from '../model.js';
 import { useEdmPut, useEdmPv, useEdmScreen, useExpanded, usePhase } from '../screen/context.js';
 import type { EdmWidgetProps } from './registry.js';
 import { Unconnected } from './Rectangle.js';
-import { SvgBox, TextRun, colorSpec, edmColor, geom, idiv, pvProp } from './shared.js';
+import { SvgBox, TextRun, colorSpec, edmColor, geom, idiv, motifOrigin, pvProp } from './shared.js';
 
 const CLS = 'activeMotifSliderClass';
 const THUMB = 30;
@@ -35,7 +35,9 @@ export function MotifSlider({ obj }: EdmWidgetProps) {
   const { palette } = useEdmScreen();
   const p = obj.props;
   const g = geom(p);
-  const { x, y, w, h } = g;
+  // The slider is a Motif widget: placed inside the drawing area's margins.
+  const { x, y } = motifOrigin(g.x, g.y);
+  const { w, h } = g;
   const controlPv = pvProp(p, 'controlPv');
   const pv = useEdmPv(controlPv, `${CLS}.controlPv`);
   const name = useExpanded(controlPv) ?? '';

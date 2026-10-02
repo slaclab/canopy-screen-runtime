@@ -161,6 +161,17 @@ export const X_PIXEL = 0.5 - 1 / 32;
  */
 export const SHOWS_IN_HIDDEN_GROUP: CSSProperties = { visibility: 'visible' };
 
+/**
+ * Where a Motif widget's window ends up: EDM's drawing surface is an
+ * XmDrawingArea with Motif's default 10-px margins, so a child widget placed
+ * left of (or above) them is moved to x = 10 (y = 10), its size unchanged.
+ * Objects EDM draws itself are not moved.
+ */
+export const MOTIF_MARGIN = 10;
+export function motifOrigin(x: number, y: number): { x: number; y: number } {
+  return { x: Math.max(x, MOTIF_MARGIN), y: Math.max(y, MOTIF_MARGIN) };
+}
+
 /** C integer division (truncates toward zero). */
 export const idiv = (a: number, b: number) => Math.trunc(a / b);
 

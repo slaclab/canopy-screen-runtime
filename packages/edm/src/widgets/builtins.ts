@@ -12,6 +12,7 @@ import { RelatedDisplay } from './RelatedDisplay.js';
 import { Arc, Byte, Circle } from './Shapes.js';
 import { FreezeButton, Mmv } from './Slac.js';
 import { SlacBar } from './SlacBar.js';
+import { Slider } from './Slider.js';
 import { Textupdate } from './Textupdate.js';
 import { XText } from './XText.js';
 import { Textentry, makeTextDsp } from './XTextDsp.js';
@@ -44,6 +45,7 @@ export function registerEdmBuiltins(): void {
   registerEdmWidget('activeSlacBarClass', SlacBar);
   registerEdmWidget('activeFreezeButtonClass', FreezeButton);
   registerEdmWidget('mmvClass', Mmv);
+  registerEdmWidget('activeSliderClass', Slider);
   // In .edl files, but registered by no EDM library: EDM draws nothing.
   registerEdmWidget('activeVsBarClass', Unregistered);
 }

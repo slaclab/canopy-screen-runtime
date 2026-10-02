@@ -51,6 +51,7 @@ import {
   geom,
   idiv,
   pvProp,
+  motifOrigin,
 } from './shared.js';
 
 /** The Text Control value string for a channel update. */
@@ -334,9 +335,10 @@ function motifBox(p: EdmProps, font: EdmFont): { x: number; y: number; w: number
   const g = geom(p);
   const newPos = propBool(p, 'newPos');
   const autoHeight = propBool(p, 'autoHeight') || !newPos;
+  const o = motifOrigin(g.x, newPos ? g.y : g.y - 3);
   return {
-    x: g.x,
-    y: newPos ? g.y : g.y - 3,
+    x: o.x,
+    y: o.y,
     w: g.w,
     h: autoHeight ? font.maxAscent + font.maxDescent + 4 : g.h,
   };
