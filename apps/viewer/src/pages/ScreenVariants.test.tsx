@@ -1,6 +1,6 @@
 // /s/<category>/<id> with several variants: the site policy, the link, the
 // user's own choice, the header switcher, and the edm variant drawn from the
-// display-file endpoint.
+// static EDM display tree.
 
 import { useEffect } from 'react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -92,9 +92,9 @@ endObjectProperties
 const ROUTES: Record<string, () => Response> = {
   '/manifest.json': () => Response.json(MANIFEST),
   '/screens/examples/vacuum-system.screen.json': () => Response.json(IR_SCREEN),
-  '/displays/v1/edm/files/vac/vacuum.edl': () =>
-    new Response(EDL, { headers: { 'X-Display-Path': 'vac/vacuum.edl' } }),
-  '/displays/v1/edm/config/colors.list': () => new Response(COLORS),
+  '/displays/edm/index.json': () => Response.json({ files: ['vac/vacuum.edl'] }),
+  '/displays/edm/vac/vacuum.edl': () => new Response(EDL),
+  '/displays/edm/config/colors.list': () => new Response(COLORS),
 };
 
 let fetchImpl: ReturnType<typeof vi.fn<typeof fetch>>;
@@ -145,11 +145,11 @@ function Where() {
   return null;
 }
 
-function renderAt(path: string, edmApiKey?: string) {
+function renderAt(path: string) {
   return render(
     <ServicesContext.Provider value={services}>
       <MemoryRouter initialEntries={[path]}>
-        <App screensBaseUrl="" edmBaseUrl="/displays/v1/edm" edmApiKey={edmApiKey} />
+        <App screensBaseUrl="" edmBaseUrl="/displays/edm" />
         <Where />
       </MemoryRouter>
     </ServicesContext.Provider>
@@ -211,14 +211,14 @@ describe('screen variants', () => {
     expect(screen.getByText('first listed')).toBeTruthy();
   });
 
-  it('sends the display endpoint its API key', async () => {
-    renderAt('/s/examples/vacuum-system?P=DEV1', 'k9');
+  it('reads the static display tree with no credentials', async () => {
+    renderAt('/s/examples/vacuum-system?P=DEV1');
     await screen.findByText('EDM P=DEV1 impl=$(impl)');
-    const edm = fetchImpl.mock.calls.filter(([u]) => String(u).startsWith('/displays/v1/edm/'));
-    expect(edm.length).toBeGreaterThanOrEqual(2);
-    for (const [, init] of edm) expect(new Headers(init?.headers).get('X-API-Key')).toBe('k9');
-    const other = fetchImpl.mock.calls.filter(([u]) => !String(u).startsWith('/displays/v1/edm/'));
-    for (const [, init] of other) expect(new Headers(init?.headers).get('X-API-Key')).toBeNull();
+    const edm = fetchImpl.mock.calls.filter(([u]) => String(u).startsWith('/displays/edm/'));
+    expect(edm.map(([u]) => String(u))).toContain('/displays/edm/vac/vacuum.edl');
+    for (const [, init] of fetchImpl.mock.calls) {
+      expect(new Headers(init?.headers).get('X-API-Key')).toBeNull();
+    }
   });
 
   it('browses one card per screen, listing its variants', async () => {

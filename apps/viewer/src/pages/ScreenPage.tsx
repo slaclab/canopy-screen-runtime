@@ -260,14 +260,12 @@ function IrView({
 export function ScreenPage({
   screensBaseUrl,
   defaultRenderMode = DEFAULT_RENDER_MODE,
-  edmBaseUrl = '/displays/v1/edm',
-  edmApiKey,
+  edmBaseUrl = '/displays/edm',
 }: {
   screensBaseUrl: string;
   defaultRenderMode?: RenderMode;
-  /** The display-file endpoint edm variants are drawn from. */
+  /** The static EDM display tree edm variants are drawn from. */
   edmBaseUrl?: string;
-  edmApiKey?: string;
 }) {
   const params = useParams();
   const category = params.category;
@@ -345,14 +343,7 @@ export function ScreenPage({
     );
   else if (blocked) body = <ErrorPanel title={blocked.title} detail={blocked.detail} />;
   else if (variant.impl === 'edm')
-    body = (
-      <EdlView
-        path={variant.entry.path}
-        macros={macros}
-        edmBaseUrl={edmBaseUrl}
-        edmApiKey={edmApiKey}
-      />
-    );
+    body = <EdlView path={variant.entry.path} macros={macros} edmBaseUrl={edmBaseUrl} />;
   else
     body = (
       <IrView

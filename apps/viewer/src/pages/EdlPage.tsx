@@ -8,9 +8,9 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { queryMacros } from '../macros.js';
 import { EdlView } from './EdlView.js';
 
-export function EdlPage({ edmBaseUrl, edmApiKey }: { edmBaseUrl: string; edmApiKey?: string }) {
+export function EdlPage({ edmBaseUrl }: { edmBaseUrl: string }) {
   const path = useParams()['*'] ?? '';
   const [searchParams] = useSearchParams();
   const macros = useMemo(() => queryMacros(searchParams), [searchParams]);
-  return <EdlView path={path} macros={macros} edmBaseUrl={edmBaseUrl} edmApiKey={edmApiKey} />;
+  return <EdlView path={path} macros={macros} edmBaseUrl={edmBaseUrl} />;
 }

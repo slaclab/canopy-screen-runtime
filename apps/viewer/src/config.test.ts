@@ -16,26 +16,12 @@ describe('readConfig render mode', () => {
   });
 });
 
-describe('readConfig display endpoint key', () => {
-  const canopy = { VITE_CANOPY_BASE_URL: 'https://canopy', VITE_CANOPY_API_KEY: 'k1' };
-
-  it("sends the Canopy key only to Canopy's own endpoint", () => {
-    expect(
-      readConfig({ ...canopy, VITE_EDM_BASE_URL: 'https://canopy/displays/v1/edm' }).edmApiKey
-    ).toBe('k1');
-    expect(
-      readConfig({ ...canopy, VITE_EDM_BASE_URL: 'https://canopy.evil/displays/v1/edm' }).edmApiKey
-    ).toBeUndefined();
-    expect(readConfig({ ...canopy }).edmApiKey).toBeUndefined();
-    // Same-origin Canopy: a relative endpoint is Canopy's, an absolute one is not.
-    expect(readConfig({ VITE_CANOPY_API_KEY: 'k1' }).edmApiKey).toBe('k1');
-    expect(
-      readConfig({ VITE_CANOPY_API_KEY: 'k1', VITE_EDM_BASE_URL: '//cdn/d' }).edmApiKey
-    ).toBeUndefined();
-  });
-
-  it('takes an explicit VITE_EDM_API_KEY', () => {
-    expect(readConfig({ ...canopy, VITE_EDM_API_KEY: 'k2' }).edmApiKey).toBe('k2');
+describe('readConfig EDM display tree', () => {
+  it('defaults to the static tree at /displays/edm; a trailing slash is dropped', () => {
+    expect(readConfig({}).edmBaseUrl).toBe('/displays/edm');
+    expect(readConfig({ VITE_EDM_BASE_URL: 'https://static/edm/' }).edmBaseUrl).toBe(
+      'https://static/edm'
+    );
   });
 });
 

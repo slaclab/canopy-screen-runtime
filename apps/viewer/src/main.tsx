@@ -26,7 +26,6 @@ createRoot(document.getElementById('root')!).render(
           screensBaseUrl={config.screensBaseUrl}
           defaultRenderMode={config.renderMode}
           edmBaseUrl={config.edmBaseUrl}
-          edmApiKey={config.edmApiKey}
         />
       </BrowserRouter>
     </ServicesContext.Provider>

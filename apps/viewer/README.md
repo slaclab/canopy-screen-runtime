@@ -23,9 +23,11 @@ not match `@slaclab/canopy-screen-ir`'s `SCHEMA_VERSION` get an explicit
 error page — never a blank screen. Each screen renders inside its own error
 boundary, and each widget inside the screen has another one.
 
-`/edl/<path>` fetches `<path>` and `colors.list` from the display-file
-endpoint (`VITE_EDM_BASE_URL`), which searches the display tree the way EDM's
-`EDMDATAFILES` does. It renders the screen at its EDM size with EDM's look.
+`/edl/<path>` reads `<path>` and `colors.list` from the frozen EDM display tree,
+published as static files at `VITE_EDM_BASE_URL`. Names a screen opens are resolved in
+the browser against the tree's `index.json`, the way EDM's `EDMDATAFILES` search
+does (`staticDisplaySource` in `@slaclab/canopy-edm`; its `canopy-edm-snapshot`
+script publishes a tree). It renders the screen at its EDM size with EDM's look.
 `render`, `impl` and `look` are reserved and are never macros. EPICS PVs go
 through Hare, and `LOC\` locals are scoped to the window. Related displays
 open in a new tab.
@@ -43,8 +45,8 @@ screen. Two optional entry fields name them, implied by `kind` when absent
 | `impl` | `edm` (`kind: "edl"`), `pydm` (`kind: "ui"`), `react` (anything else) |
 | `look` | free text, e.g. `faithful` for an `.edl` drawn as EDM draws it        |
 
-An `edm` entry's `path` is the display's path under the display-file
-endpoint (the `/edl/<path>` path), not a file in the content repo. In
+An `edm` entry's `path` is the display's path under the EDM display tree
+(the `/edl/<path>` path), not a file in the content repo. In
 canopy-screens such an entry comes from a `<name>.edl.json` descriptor, and
 every entry carries `impl` and `look` (`null` when none):
 
@@ -94,17 +96,16 @@ more than that, pin the slug.
 
 ## Configuration (`.env.local`)
 
-| Variable                  | Default                            | Meaning                                                                                                                                                        |
-| ------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `VITE_SCREENS_BASE_URL`   | `''` (same origin)                 | Base URL serving a canopy-screens checkout (`manifest.json` + `screens/**`)                                                                                    |
-| `VITE_PV_MODE`            | `mock`                             | `mock` = simulated PVs, rules inert · `hare` = live Canopy                                                                                                     |
-| `VITE_CANOPY_BASE_URL`    | —                                  | Canopy API base (hare mode), e.g. `https://canopy.example.org`                                                                                                 |
-| `VITE_CANOPY_API_KEY`     | —                                  | API key (hare mode)                                                                                                                                            |
-| `VITE_RENDER_MODE`        | `edm`                              | Default render mode: `edm` (legacy alarm/text presentation) · `carbon`                                                                                         |
-| `VITE_EDM_BASE_URL`       | `/displays/v1/edm`                 | Display-file endpoint behind `/edl/<path>` and edm variants: Canopy's display tree named `edm` (`{base}/files/<path>`, `{base}/config/colors.list`)            |
-| `VITE_EDM_API_KEY`        | see meaning                        | `X-API-Key` for that endpoint. Default: the Canopy key when the endpoint is Canopy's (under `VITE_CANOPY_BASE_URL`, or relative when that is unset), else none |
-| `VITE_SCREEN_POLICY`      | `magpie` in hare mode, else `none` | Where the site's choice of variant comes from                                                                                                                  |
-| `VITE_SCREEN_POLICY_SLUG` | —                                  | Magpie slug of the policy config (default: find it by name)                                                                                                    |
+| Variable                  | Default                            | Meaning                                                                                                                                                                                                                 |
+| ------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_SCREENS_BASE_URL`   | `''` (same origin)                 | Base URL serving a canopy-screens checkout (`manifest.json` + `screens/**`)                                                                                                                                             |
+| `VITE_PV_MODE`            | `mock`                             | `mock` = simulated PVs, rules inert · `hare` = live Canopy                                                                                                                                                              |
+| `VITE_CANOPY_BASE_URL`    | —                                  | Canopy API base (hare mode), e.g. `https://canopy.example.org`                                                                                                                                                          |
+| `VITE_CANOPY_API_KEY`     | —                                  | API key (hare mode)                                                                                                                                                                                                     |
+| `VITE_RENDER_MODE`        | `edm`                              | Default render mode: `edm` (legacy alarm/text presentation) · `carbon`                                                                                                                                                  |
+| `VITE_EDM_BASE_URL`       | `/displays/edm`                    | The frozen EDM display tree as static files, behind `/edl/<path>` and edm variants: `{base}/index.json`, `{base}/<path>`, `{base}/config/colors.list`. No key is sent; host it behind the same protection as the viewer |
+| `VITE_SCREEN_POLICY`      | `magpie` in hare mode, else `none` | Where the site's choice of variant comes from                                                                                                                                                                           |
+| `VITE_SCREEN_POLICY_SLUG` | —                                  | Magpie slug of the policy config (default: find it by name)                                                                                                                                                             |
 
 `src/services.ts` is the composition root: `mock` builds a `MockPVService`
 (no Fox — rules stay at their base values), `hare` builds `HarePVService`

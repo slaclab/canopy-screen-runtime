@@ -1,10 +1,11 @@
 // A legacy EDM screen rendered directly from its .edl file (the faithful
 // look, no conversion): the page at /edl/<path>, and the edm variant of a
-// manifest screen at /s/<category>/<id>. The path is relative to the display
-// root the EDM endpoint serves (EDMDATAFILES-style search).
+// manifest screen at /s/<category>/<id>. The path is under the root of the
+// frozen EDM display tree published as static files (staticDisplaySource:
+// EDMDATAFILES-style lookup against the tree's index.json).
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { EdmDocument, EdmOpenDisplayRequest } from '@slaclab/canopy-edm';
+import type { EdmDisplaySource, EdmDocument, EdmOpenDisplayRequest } from '@slaclab/canopy-edm';
 import {
   EdmPalette,
   EdmPvLayer,
@@ -12,13 +13,13 @@ import {
   batchedPvServiceConnection,
   calcConnection,
   edlName,
-  httpDisplaySource,
   localConnection,
   parseCalcList,
   parseDisplay,
   propStr,
   pvServiceConnection,
   screenFonts,
+  staticDisplaySource,
 } from '@slaclab/canopy-edm';
 import { ErrorPanel } from '../ErrorPanel.js';
 import { useServices } from '../services.js';
@@ -29,18 +30,28 @@ interface SiteConfig {
   calcs: Map<string, string>;
 }
 
+/** One source per tree for the session, so its index is fetched once. */
+const sources = new Map<string, EdmDisplaySource>();
+function displaySource(base: string): EdmDisplaySource {
+  let source = sources.get(base);
+  if (!source) {
+    source = staticDisplaySource(base);
+    sources.set(base, source);
+  }
+  return source;
+}
+
 let siteCache: { key: string; config: Promise<SiteConfig> } | null = null;
 
-function loadSite(base: string, apiKey: string | undefined): Promise<SiteConfig> {
-  const key = `${base}|${apiKey ?? ''}`;
-  if (siteCache?.key !== key) {
-    const source = httpDisplaySource(base, { apiKey });
+function loadSite(base: string): Promise<SiteConfig> {
+  if (siteCache?.key !== base) {
+    const source = displaySource(base);
     const config = Promise.all([
       source.config('colors.list').then((t) => EdmPalette.parse(t)),
       // A site without a calc.list simply has no named calcs.
       source.config('calc.list').then(parseCalcList, () => new Map<string, string>()),
     ]).then(([palette, calcs]) => ({ palette, calcs }));
-    siteCache = { key, config };
+    siteCache = { key: base, config };
     config.catch(() => {
       siteCache = null;
     });
@@ -53,14 +64,14 @@ type LoadState =
   | { status: 'error'; title: string; detail?: string }
   | { status: 'ready'; path: string; doc: EdmDocument; site: SiteConfig };
 
-function useEdmDocument(base: string, apiKey: string | undefined, path: string): LoadState {
-  const key = `${base}|${apiKey ?? ''}|${path}`;
+function useEdmDocument(base: string, path: string): LoadState {
+  const key = `${base}|${path}`;
   const [loaded, setLoaded] = useState<{ key: string; state: LoadState } | null>(null);
   useEffect(() => {
     let cancelled = false;
-    const source = httpDisplaySource(base, { apiKey });
+    const source = displaySource(base);
     (async (): Promise<LoadState> => {
-      const [site, file] = await Promise.all([loadSite(base, apiKey), source.load(path)]);
+      const [site, file] = await Promise.all([loadSite(base), source.load(path)]);
       const doc = parseDisplay(file.path, file.text);
       if (typeof document !== 'undefined' && document.fonts) {
         // Load the fonts this screen draws with before it appears, so neither a
@@ -85,7 +96,7 @@ function useEdmDocument(base: string, apiKey: string | undefined, path: string):
     return () => {
       cancelled = true;
     };
-  }, [base, apiKey, path, key]);
+  }, [base, path, key]);
   return loaded && loaded.key === key ? loaded.state : { status: 'loading' };
 }
 
@@ -100,17 +111,14 @@ export function EdlView({
   path,
   macros: given,
   edmBaseUrl,
-  edmApiKey,
 }: {
   /** Under the display root, e.g. misc/sdr_fb.edl. */
   path: string;
   macros: Readonly<Record<string, string>>;
   edmBaseUrl: string;
-  /** Sent as X-API-Key to the display endpoint. */
-  edmApiKey?: string;
 }) {
   const services = useServices();
-  const state = useEdmDocument(edmBaseUrl, edmApiKey, path);
+  const state = useEdmDocument(edmBaseUrl, path);
   const [windowId] = useState(() => `w${Math.random().toString(36).slice(2, 8)}`);
 
   // EDM's window- and application-unique macros.
@@ -149,10 +157,7 @@ export function EdlView({
     if (!window.closed && window.history.length > 1) window.history.back();
   }, []);
 
-  const source = useMemo(
-    () => httpDisplaySource(edmBaseUrl, { apiKey: edmApiKey }),
-    [edmBaseUrl, edmApiKey]
-  );
+  const source = useMemo(() => displaySource(edmBaseUrl), [edmBaseUrl]);
   const openDisplay = useMemo(() => {
     return (req: EdmOpenDisplayRequest) => {
       // Resolve like EDM (relative to the referring screen), then open the
