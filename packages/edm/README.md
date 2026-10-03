@@ -38,13 +38,31 @@ The layout follows Diamond's cs-web-lib, so the package could move upstream late
   the displayed screen, else the embedded file it came through), which the harness
   uses to check PV parity. Writes go through `layer.put()` (Hare's REST PUT for EPICS
   channels).
-- **Display source** (`httpDisplaySource(base, { apiKey })`): `.edl` files, the images
-  they draw and the site's `*.list` config come from a display-file endpoint
-  (`{base}/files/<path>?relativeTo=<referring file>`, `{base}/config/<name>.list`), which
-  searches like EDM's `EDMDATAFILES` and names the file it found in `X-Display-Path`.
-  With an API key every request carries `X-API-Key` (never in the URL), so PNG and GIF
-  images are fetched through the source too, not handed to `<img src>`. Caching is the
-  browser's: the endpoint sends ETags and asks for revalidation.
+- **Display source** (`staticDisplaySource(base)`): `.edl` files, the images they draw
+  and the site's `*.list` config come from a frozen display tree published as static
+  files, in the layout of the production display root, under `base`. The tree's
+  `{base}/index.json` lists every served file and carries its search path and root
+  aliases, and the config lists sit at `{base}/config/<name>.list`. Names are resolved in
+  the browser against the index the way EDM's `EDMDATAFILES` search does:
+  - the referring file's directory, then its ancestors, then the search path;
+  - a root alias maps onto the root;
+  - `..` never leaves the root;
+  - only `.edl` and image suffixes count.
+
+  The index is fetched once per session. Files are decoded as latin-1, and no credentials
+  are sent (the static host is protected like the viewer). Images are fetched through the
+  source, not handed to `<img src>`.
+
+  `scripts/snapshot-display-tree.mjs` (bin `canopy-edm-snapshot`) takes the snapshot:
+  - copies the served files;
+  - resolves symlinks, dropping any that leave the root;
+  - skips `CVS`, `Archive` and dot-files;
+  - writes the index and copies the config lists.
+
+  `httpDisplaySource(base, { apiKey })` is kept for a server that resolves names itself
+  (`{base}/files/<path>?relativeTo=`, `X-Display-Path`), the design of the closed
+  slaclab/canopy#130.
+
 - **Hare batching**: Hare answers a socket's subscribe messages one at a time and holds
   each until all its channels are seeded (about 10 s per dead channel,
   slaclab/canopy#129). The EDM page therefore subscribes a whole render in one message

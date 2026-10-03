@@ -1,6 +1,12 @@
-// Where display files and site config come from. The HTTP source speaks
-// Canopy's display-file endpoint, whose base names a display tree
-// ({canopy}/displays/v1/edm for EDM):
+// Where display files and site config come from: an EdmDisplaySource. Two
+// implementations:
+//
+//   - staticDisplaySource (static.ts): a frozen display tree published as
+//     static files plus an index, names resolved in the browser. What the
+//     viewer uses.
+//   - httpDisplaySource (here): a server that resolves names itself, in the
+//     shape of the read-only endpoint designed for Canopy (slaclab/canopy#130,
+//     closed unmerged), whose base names a display tree:
 //
 //   GET {base}/files/{path}?relativeTo={dir}   an .edl (or image), searched
 //        like EDMDATAFILES: relativeTo's directory, its ancestors, then the
@@ -11,7 +17,7 @@
 // so images are fetched too rather than handed to <img src>. Caching is the
 // browser's: the endpoint sends ETags and asks for revalidation.
 //
-// (canopy-fidelity/tools/edm_direct_serve.mjs serves it for the harness.)
+// (canopy-fidelity/tools/edm_direct_serve.mjs serves both shapes for the harness.)
 
 import { parseEdl } from '../parser/edl.js';
 import { getFileParser } from '../parser/registry.js';
@@ -22,8 +28,6 @@ export interface EdmDisplaySource {
   load(path: string, relativeTo?: string): Promise<{ path: string; text: string }>;
   /** An image (or any other served file) found the same way, as bytes. */
   image(path: string, relativeTo?: string): Promise<Blob>;
-  /** URL of a file found the same way (no credentials attached). */
-  url(path: string, relativeTo?: string): string;
   config(name: 'colors.list' | 'fonts.list' | 'calc.list'): Promise<string>;
 }
 
@@ -59,7 +63,10 @@ export function displayNameInUrl(name: string): string {
 export function httpDisplaySource(
   base: string,
   options: HttpDisplaySourceOptions | typeof fetch = {}
-): EdmDisplaySource {
+): EdmDisplaySource & {
+  /** The files/ URL of a name (the server resolves it; no credentials attached). */
+  url(path: string, relativeTo?: string): string;
+} {
   const opts = typeof options === 'function' ? { fetch: options } : options;
   const fetchFn =
     opts.fetch ?? ((input: RequestInfo | URL, init?: RequestInit) => fetch(input, init));

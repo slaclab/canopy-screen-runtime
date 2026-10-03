@@ -21,10 +21,14 @@
     },
     "./styles.css": "./styles.css"
   },
+  "bin": {
+    "canopy-edm-snapshot": "./scripts/snapshot-display-tree.mjs"
+  },
   "files": [
     "NOTICE.md",
     "dist",
     "fonts",
+    "scripts/snapshot-display-tree.mjs",
     "styles.css"
   ],
   "sideEffects": [

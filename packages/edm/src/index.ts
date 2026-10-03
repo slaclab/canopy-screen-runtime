@@ -80,3 +80,14 @@ export {
   EdmHttpError,
 } from './loader/source.js';
 export type { EdmDisplaySource, HttpDisplaySourceOptions } from './loader/source.js';
+export {
+  DEFAULT_DISPLAY_SUFFIXES,
+  DisplayTree,
+  latin1,
+  staticDisplaySource,
+} from './loader/static.js';
+export type {
+  DisplayTreeIndexFile,
+  DisplayTreeOptions,
+  StaticDisplaySourceOptions,
+} from './loader/static.js';
