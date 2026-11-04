@@ -195,7 +195,7 @@ whose PV is not writable shows the not-allowed cursor.
 - **EPICS base** code is ported under the EPICS Open License: number conversion
   (`cvtFast.c`) in `src/format.ts`, and the calc expression compiler and evaluator
   (`postfix.c`, `calcPerform.c`) in `src/pv/calcExpr.ts`, adjusted to the semantics of
-  the older copy EDM carries.
+  the older copy EDM carries. The EPICS license text ships in `NOTICE.md`.
 - **JLab wedm** (MIT) served as a reference only. None of its code is included yet. Any
   file that later ports wedm logic must keep wedm's MIT notice.
 - **Bitmap fonts and metrics** come from the X11 Adobe 75 dpi fonts: © 1984–1989, 1994
