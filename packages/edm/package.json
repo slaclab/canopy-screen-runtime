@@ -22,6 +22,7 @@
     "./styles.css": "./styles.css"
   },
   "files": [
+    "NOTICE.md",
     "dist",
     "styles.css"
   ],
