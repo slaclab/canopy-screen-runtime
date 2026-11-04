@@ -13,7 +13,7 @@
 // caller's `resolveScreen` with a depth cap and a ref-chain cycle guard.
 //
 // The renderer is service-agnostic: widgets consume live PVs through
-// @slaclab/canopy-react context, rules consume Fox through the
+// @slaclab/canopy-react context, rules consume the Formula Engine through the
 // FormulaSubscriberContext — the composition root provides both.
 
 import { Component, createContext, useContext, useEffect, useMemo, useState } from 'react';

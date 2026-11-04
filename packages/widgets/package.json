@@ -36,8 +36,8 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@slaclab/canopy-client": "^0.1.2",
-    "@slaclab/canopy-react": "^0.1.2",
+    "@slaclab/canopy-client": "^0.3.0",
+    "@slaclab/canopy-react": "^0.3.0",
     "echarts": "^6.1.0",
     "echarts-for-react": "^3.0.6"
   },

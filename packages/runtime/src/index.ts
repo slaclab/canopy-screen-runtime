@@ -1,5 +1,5 @@
 // @slaclab/canopy-screen-runtime — renders Screen IR documents with live
-// PV widgets, macro resolution, embedded screens, and Fox-compiled rules.
+// PV widgets, macro resolution, embedded screens, and rules compiled for the Formula Engine.
 
 export { ScreenRenderer } from './render/ScreenRenderer.js';
 export type { ScreenRendererProps, ResolveScreen } from './render/ScreenRenderer.js';
@@ -16,7 +16,7 @@ export {
   hasMacro,
 } from './macros.js';
 
-export { FOX_PREFIX, isFoxRef, foxName } from './foxRef.js';
+export { FORMULA_PREFIX, isFormulaRef, formulaName } from './formulaRef.js';
 
 export type {
   FormulaKind,
@@ -27,8 +27,8 @@ export type {
 } from './formula.js';
 export { FormulaSubscriberContext, useFormulaSubscriber } from './formula.js';
 
-export { createFoxFormulaSubscriber } from './rules/foxAdapter.js';
-export type { FoxServiceLike } from './rules/foxAdapter.js';
+export { createFormulaEngineSubscriber } from './rules/formulaEngineAdapter.js';
+export type { FormulaEngineServiceLike } from './rules/formulaEngineAdapter.js';
 export { createLocalAwareFormulaSubscriber } from './rules/localFormula.js';
 export type { LocalPVLike } from './rules/localFormula.js';
 export { evaluatePyExpr, PyExprError } from './rules/pyExpr.js';

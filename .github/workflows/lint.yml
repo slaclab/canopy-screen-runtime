@@ -1,8 +1,7 @@
 name: Lint & Format
 
-# `pnpm install` pulls the @slaclab SDK packages (canopy-client/react/shell)
-# from GitHub Packages; the install step authenticates with GITHUB_TOKEN via
-# NODE_AUTH_TOKEN (see .npmrc), and the job is granted packages: read.
+# `pnpm install` pulls the @slaclab SDK packages (canopy-client/react/shell/
+# screen-ir) from the public npm registry, so it needs no token.
 
 on:
   push:
@@ -17,7 +16,6 @@ jobs:
 
     permissions:
       contents: read
-      packages: read
 
     steps:
       - name: Checkout code
@@ -37,8 +35,6 @@ jobs:
           node-version: 23.11.0
           cache: pnpm
       - run: pnpm install
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run ESLint
         run: pnpm run lint

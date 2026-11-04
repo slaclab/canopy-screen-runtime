@@ -4,7 +4,7 @@
 import { createContext, useContext } from 'react';
 import type { PVService } from '@slaclab/canopy-client';
 import {
-  FoxFormulaService,
+  FormulaEngineService,
   HarePVService,
   LocalPVService,
   MockPVService,
@@ -12,7 +12,7 @@ import {
 } from '@slaclab/canopy-client';
 import type { FormulaSubscriber } from '@slaclab/canopy-screen-runtime';
 import {
-  createFoxFormulaSubscriber,
+  createFormulaEngineSubscriber,
   createLocalAwareFormulaSubscriber,
 } from '@slaclab/canopy-screen-runtime';
 import type { ViewerConfig } from './config.js';
@@ -38,14 +38,17 @@ export function createServices(config: ViewerConfig): ViewerServices {
     });
     const pv = new RoutedPVService({ 'loc://': locals }, hare);
     pv.connect();
-    const fox = new FoxFormulaService({
+    const formulaEngine = new FormulaEngineService({
       baseUrl: config.canopyBaseUrl,
       apiKey: config.canopyApiKey,
     });
-    fox.connect();
+    formulaEngine.connect();
     return {
       pv,
-      formulas: createLocalAwareFormulaSubscriber(locals, createFoxFormulaSubscriber(fox)),
+      formulas: createLocalAwareFormulaSubscriber(
+        locals,
+        createFormulaEngineSubscriber(formulaEngine)
+      ),
       locals,
     };
   }

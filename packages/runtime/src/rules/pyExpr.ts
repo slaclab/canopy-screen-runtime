@@ -1,4 +1,4 @@
-// Minimal evaluator for the Fox expression subset (sandboxed Python
+// Minimal evaluator for the Formula Engine expression subset (sandboxed Python
 // expressions) so formulas whose inputs are all CLIENT-side (loc:// locals)
 // can evaluate without a server round-trip. Mirrors what compileRule emits:
 // nested conditionals (`a if c else b`), and/or/not, comparisons, arithmetic,
@@ -6,7 +6,7 @@
 //
 // This is NOT a general Python evaluator — anything outside the subset
 // throws PyExprError and the caller downgrades to a warning (same contract
-// as Fox-side validation failures).
+// as Formula Engine-side validation failures).
 
 export class PyExprError extends Error {
   constructor(message: string) {
@@ -324,7 +324,7 @@ class Parser {
   }
 }
 
-/** Evaluate a Fox wire expression against `{token}` binding values. */
+/** Evaluate a Formula Engine wire expression against `{token}` binding values. */
 export function evaluatePyExpr(
   expression: string,
   bindings: ReadonlyMap<string, PyValue>

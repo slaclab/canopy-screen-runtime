@@ -1,7 +1,7 @@
 // Acceptance: every IR fixture renders under the runtime with mock PV data.
 // Fixtures come from the builder/screen-ir conformance corpus:
 //  - p1_widgets.screen.json      (edl-converter golden output)
-//  - formula-driven.screen.json  (formula arm + fox:// refs)
+//  - formula-driven.screen.json  (formula arm + formula:// refs)
 //  - simple.screen.json          (importer fixture: containers, unknown widget)
 //  - vacuum-system.screen.json   (example: rules, embedded display, macros)
 

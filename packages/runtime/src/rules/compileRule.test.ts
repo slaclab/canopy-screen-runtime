@@ -1,4 +1,4 @@
-// Golden tests for the Rule → Fox FormulaSpec compiler.
+// Golden tests for the Rule → Formula Engine FormulaSpec compiler.
 //
 // Each case pins the EXACT compiled spec — expression string and bindings —
 // so any change to the encoding (ladder shape, literal rendering, token
@@ -61,13 +61,13 @@ describe('compileRule — conditional arm goldens', () => {
   });
 
   it('compiles a multi-condition ladder, first truthy wins, string values', () => {
-    // simple.screen.json r-001 (color-by-alarm) with its fox://sum inlined.
+    // simple.screen.json r-001 (color-by-alarm) with its formula://sum inlined.
     const rule = conditional({
       targetProperty: 'foregroundColor',
       default: '#ffffff',
       pvs: [
         { name: '${P}:SEVR', trigger: true },
-        { name: 'fox://sum', trigger: true },
+        { name: 'formula://sum', trigger: true },
       ],
       conditions: [
         { expression: '{0} > 1', value: '#ff0000' },
@@ -91,12 +91,12 @@ describe('compileRule — conditional arm goldens', () => {
     });
   });
 
-  it('inlines a fox:// binding used against a plain pv (formula-driven r-002)', () => {
+  it('inlines a formula:// binding used against a plain pv (formula-driven r-002)', () => {
     const rule = conditional({
       targetProperty: 'visible',
       default: true,
       pvs: [
-        { name: 'fox://f-001', trigger: true },
+        { name: 'formula://f-001', trigger: true },
         { name: '${P}:THRESHOLD', trigger: true },
       ],
       conditions: [{ expression: '{0} > {1}', value: false }],
@@ -130,7 +130,7 @@ describe('compileRule — conditional arm goldens', () => {
       targetProperty: 'precision',
       spec: {
         kind: 'scalar',
-        // Fox itself normalizes && to `and` (parser _BOOL_REPLACEMENTS);
+        // The Formula Engine itself normalizes && to `and` (parser _BOOL_REPLACEMENTS);
         // conditions pass through verbatim.
         expression: '3 if ({0} >= 0 && {0} < 10) else (None)',
         bindings: { '0': 'DEV:1:RES' },
@@ -138,7 +138,7 @@ describe('compileRule — conditional arm goldens', () => {
     });
   });
 
-  it('drops trigger-only bindings never referenced by a condition (Fox rejects unused bindings)', () => {
+  it('drops trigger-only bindings never referenced by a condition (the Formula Engine rejects unused bindings)', () => {
     const rule = conditional({
       targetProperty: 'text',
       default: 'idle',
@@ -210,15 +210,15 @@ describe('compileRule — conditional arm goldens', () => {
     expect(() => compileRule(rule, [], {})).toThrow(RuleCompileError);
   });
 
-  it('rejects a dangling fox:// pv binding', () => {
+  it('rejects a dangling formula:// pv binding', () => {
     const rule = conditional({
       targetProperty: 'visible',
       default: true,
-      pvs: [{ name: 'fox://nope', trigger: true }],
+      pvs: [{ name: 'formula://nope', trigger: true }],
       conditions: [{ expression: '{0} > 0', value: false }],
     });
     expect(() => compileRule(rule, [], {})).toThrow(
-      /no formulas\[\] entry declares 'fox:\/\/nope'/
+      /no formulas\[\] entry declares 'formula:\/\/nope'/
     );
   });
 });
@@ -244,7 +244,7 @@ describe('compileRule — formula arm goldens', () => {
     });
   });
 
-  it('honors a non-scalar formula kind and tolerates the fox:// prefix', () => {
+  it('honors a non-scalar formula kind and tolerates the formula:// prefix', () => {
     const formulas: FormulaDeclaration[] = [
       { name: 'wave', kind: 'waveform', expression: 'W * 2', bindings: { W: 'DEV:WAVE' } },
     ];
@@ -253,7 +253,7 @@ describe('compileRule — formula arm goldens', () => {
       name: 'waveform rule',
       targetProperty: 'points',
       default: null,
-      formula: 'fox://wave',
+      formula: 'formula://wave',
     };
 
     expect(compileRule(rule, formulas, {})).toEqual({
@@ -276,7 +276,7 @@ describe('compileRule — formula arm goldens', () => {
 });
 
 describe('compileFormulaSpec', () => {
-  it('drops declared-but-unused bindings (Fox rejects extras)', () => {
+  it('drops declared-but-unused bindings (the Formula Engine rejects extras)', () => {
     const spec = compileFormulaSpec(
       { name: 'f', expression: 'A * 2', bindings: { A: 'DEV:A', B: 'DEV:B' } },
       {}

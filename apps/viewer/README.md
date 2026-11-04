@@ -26,8 +26,9 @@ boundary, and each widget inside the screen has another one.
 | `VITE_CANOPY_API_KEY`   | —                  | API key (hare mode)                                                         |
 
 `src/services.ts` is the composition root: `mock` builds a `MockPVService`
-(no Fox — rules stay at their base values), `hare` builds `HarePVService`
-plus `FoxFormulaService` wrapped in the runtime's formula-subscriber adapter.
+(no Formula Engine — rules stay at their base values), `hare` builds
+`HarePVService` plus the SDK's Formula Engine service wrapped in the runtime's
+formula-subscriber adapter.
 
 ## Local dev against a canopy-screens checkout (smoke test)
 
