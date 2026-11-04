@@ -5,6 +5,10 @@
 Parts of this package are TypeScript ports of C code from EPICS base:
 
 - `src/format.ts`: `cvtDoubleToString`, from `libcom/cvtFast.c`.
+- `src/pv/calcExpr.ts`: the calc expression compiler and evaluator, from `postfix.c` and
+  `calcPerform.c` as of EPICS base 3.14, in the copy that EDM carries in its calcPv plugin.
+  It keeps the 3.14 semantics EDM screens depend on: variables A to L only, two-argument
+  MAX and MIN, unary FINITE and ISNAN, `%` as fmod, and no `>>>`.
 
 Changes from the originals: the code is rewritten in TypeScript, and each file's
 header describes its source and where its behaviour differs.
