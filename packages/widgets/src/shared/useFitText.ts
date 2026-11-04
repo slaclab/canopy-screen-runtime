@@ -65,7 +65,8 @@ export interface UseFitTextResult<T extends HTMLElement> {
 export function useFitText<T extends HTMLElement>(
   maxFontSize: number,
   deps: ReadonlyArray<unknown> = [],
-  min: number = MIN_FONT_SIZE
+  min: number = MIN_FONT_SIZE,
+  enabled: boolean = true
 ): UseFitTextResult<T> {
   const ref = useRef<T | null>(null);
   const [fontSize, setFontSize] = useState(maxFontSize);
@@ -96,6 +97,7 @@ export function useFitText<T extends HTMLElement>(
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (!enabled) return;
     measure();
     if (typeof ResizeObserver === 'undefined') return;
     const ro = new ResizeObserver(() => measure());
@@ -103,7 +105,7 @@ export function useFitText<T extends HTMLElement>(
     return () => ro.disconnect();
     // measure depends on maxFontSize/min; `deps` carries text changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [measure, ...deps]);
+  }, [measure, enabled, ...deps]);
 
-  return { ref, fontSize };
+  return { ref, fontSize: enabled ? fontSize : maxFontSize };
 }

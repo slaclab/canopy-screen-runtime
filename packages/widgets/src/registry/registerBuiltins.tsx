@@ -50,6 +50,13 @@ const appearanceSchemas: PropSchema[] = [
   },
 ];
 
+const fitTextSchema: PropSchema = {
+  key: 'fitText',
+  label: 'Shrink to Fit',
+  type: 'boolean',
+  section: 'appearance',
+};
+
 // NOTE: containers render `children` (nested widget overlays from the canvas's
 // recursive renderer). Children are absolutely positioned against this box, so
 // do NOT add `overflow: hidden` here or to `.widget-overlay` — the imported Qt
@@ -92,11 +99,13 @@ function EllipseWidget({ layout, props, isSelected, children }: WidgetRendererPr
 function StaticLabelWidget({ layout, props, isSelected }: WidgetRendererProps) {
   const text = (props.text as string) ?? 'Label';
   const maxFontSize = (props.fontSize as number) ?? 14;
-  const { ref, fontSize } = useFitText<HTMLSpanElement>(maxFontSize, [
-    text,
-    layout.width,
-    layout.height,
-  ]);
+  const fit = (props.fitText as boolean) ?? false;
+  const { ref, fontSize } = useFitText<HTMLSpanElement>(
+    maxFontSize,
+    [text, layout.width, layout.height],
+    undefined,
+    fit
+  );
 
   return (
     <div
@@ -182,6 +191,7 @@ export function registerBuiltinWidgets() {
       { key: 'showUnits', label: 'Show Units', type: 'boolean', section: 'display' },
       ...alarmSchemas,
       ...appearanceSchemas,
+      fitTextSchema,
     ],
   });
 
@@ -617,6 +627,7 @@ export function registerBuiltinWidgets() {
     propsSchema: [
       { key: 'text', label: 'Text', type: 'string', section: 'display' },
       ...appearanceSchemas,
+      fitTextSchema,
     ],
   });
 

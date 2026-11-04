@@ -38,12 +38,13 @@ export function CarbonPVTextDisplay({ layout, props, isSelected }: WidgetRendere
       : '---';
   // Default ~13px matches the .carbon-pv-display__value rule (0.8125rem).
   const maxFontSize = (props.fontSize as number) ?? 13;
-  const { ref, fontSize } = useFitText<HTMLDivElement>(maxFontSize, [
-    label,
-    value,
-    layout.width,
-    layout.height,
-  ]);
+  const fit = (props.fitText as boolean) ?? false;
+  const { ref, fontSize } = useFitText<HTMLDivElement>(
+    maxFontSize,
+    [label, value, layout.width, layout.height],
+    undefined,
+    fit
+  );
 
   const severityTag = (() => {
     switch (pv.severity) {
