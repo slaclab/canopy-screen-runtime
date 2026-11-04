@@ -10,6 +10,12 @@ content: browse the screen manifest, deep-link into a screen, and run it live.
 | `/`                | Browse/search the manifest (filter by title, category, or id)          |
 | `/s/:category/:id` | Render one IR screen; every `?NAME=value` query param is a macro value |
 
+`?render=edm|carbon` on a screen URL is reserved (not a macro): it selects the
+render mode for that page, overriding `VITE_RENDER_MODE`. `edm` presents
+alarms and text the way the legacy EDM display did — alarm-sensitive values
+recoloured with EDM's alarm colours, EDM's disconnected outline, flush text —
+on Carbon widget chrome; `carbon` shows severity pills and Carbon paddings.
+
 Screens whose manifest `kind` is not `ir` (wrapper/code screens) get an
 explicit "not yet viewable" card/page. Documents whose `schemaVersion` does
 not match `@slaclab/canopy-screen-ir`'s `SCHEMA_VERSION` get an explicit
@@ -24,6 +30,7 @@ boundary, and each widget inside the screen has another one.
 | `VITE_PV_MODE`          | `mock`             | `mock` = simulated PVs, rules inert · `hare` = live Canopy                  |
 | `VITE_CANOPY_BASE_URL`  | —                  | Canopy API base (hare mode), e.g. `https://canopy.example.org`              |
 | `VITE_CANOPY_API_KEY`   | —                  | API key (hare mode)                                                         |
+| `VITE_RENDER_MODE`      | `edm`              | Default render mode: `edm` (legacy alarm/text presentation) · `carbon`      |
 
 `src/services.ts` is the composition root: `mock` builds a `MockPVService`
 (no Fox — rules stay at their base values), `hare` builds `HarePVService`

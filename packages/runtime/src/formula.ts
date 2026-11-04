@@ -25,10 +25,24 @@ export interface FormulaSpec {
 /** Scalar result value delivered to rule subscribers. */
 export type FormulaScalarValue = number | string | boolean;
 
+/** Alarm severity of a formula result as Fox reports it (worst input severity). */
+export type FormulaSeverity = 'NO_ALARM' | 'MINOR' | 'MAJOR' | 'INVALID';
+
+/**
+ * Optional per-result metadata. Rules ignore it; formula-backed widget
+ * channels (see ScreenPVService) surface it as the channel's alarm state.
+ */
+export interface FormulaResultMeta {
+  /** Worst severity across the formula's inputs; absent = not reported. */
+  readonly severity?: FormulaSeverity;
+  /** Result timestamp, epoch ms (Fox: the newest input sample used). */
+  readonly timestampMs?: number;
+}
+
 export interface FormulaSubscribeOptions {
   /** Re-evaluation poll interval; omitted/0 = event-driven (on PV change). */
   intervalMs?: number;
-  onResult: (value: FormulaScalarValue) => void;
+  onResult: (value: FormulaScalarValue, meta?: FormulaResultMeta) => void;
   onError?: (error: Error) => void;
 }
 

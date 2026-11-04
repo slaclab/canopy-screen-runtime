@@ -19,7 +19,35 @@ export type {
   WidgetProps,
 } from './types.js';
 
-export { alarmColor, alarmBorderColor, alarmBorderStyle } from './alarm.js';
+export {
+  alarmColor,
+  alarmBorderColor,
+  alarmBorderStyle,
+  alarmContentColor,
+  CARBON_ALARM_PALETTE,
+  EDM_ALARM_PALETTE,
+} from './alarm.js';
+export type { AlarmPalette } from './alarm.js';
+
+// Render mode (edm | carbon): the presentation switch widgets read via context.
+export {
+  RENDER_MODES,
+  DEFAULT_RENDER_MODE,
+  RENDER_PROFILES,
+  RenderModeContext,
+  parseRenderMode,
+  useRenderMode,
+  useRenderProfile,
+} from './renderMode.js';
+export type { RenderMode, RenderProfile } from './renderMode.js';
+
+// The PV context (and PV shapes) the widget set reads through usePV. The
+// screen runtime installs screen-scoped PVServices (fox:// formula channels)
+// into THIS context instance; re-exporting it here binds the runtime to the
+// exact copy its widgets consume without a second direct SDK dependency.
+export { PVServiceContext } from '@slaclab/canopy-react';
+export { AlarmSeverity, DISCONNECTED_PV } from '@slaclab/canopy-client';
+export type { PVData, PVListener, PVService } from '@slaclab/canopy-client';
 
 export { AssetResolverContext, useResolveAsset } from './assets.js';
 export type { ResolveAsset } from './assets.js';

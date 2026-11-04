@@ -35,6 +35,17 @@ What the renderer does:
   composes by AND. The renderer stays service-agnostic: provide a
   `FormulaSubscriber` via `FormulaSubscriberContext` — the SDK's
   `FoxFormulaService` fits through `createFoxFormulaSubscriber`.
+- **Formula channels** — a widget channel prop bound to `fox://<name>` (a
+  converted EDM `CALC\` / PyDM `calc://` channel) reads the rendering
+  screen's `formulas[]` entry, its bindings macro-resolved with that screen's
+  effective macros (embedded screens use their own formulas and macros). Each
+  screen wraps the PV context in a `ScreenPVService` that evaluates the
+  formula through the same `FormulaSubscriber` as rules and feeds widgets
+  value, severity and connected state; other addresses pass through to the
+  enclosing PV service. Formula channels are read-only (writes are rejected);
+  unknown names, non-scalar kinds and Fox errors show as disconnected with a
+  console warning. Without Fox (mock mode) they stay disconnected, except
+  formulas over `loc://` locals only, which evaluate in the page.
 
 Live PV data is consumed by the widgets through `@slaclab/canopy-react`
 context; the composition root chooses the concrete services.

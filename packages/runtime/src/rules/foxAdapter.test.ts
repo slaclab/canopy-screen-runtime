@@ -31,7 +31,7 @@ describe('createFoxFormulaSubscriber', () => {
     let captured: {
       onResult: (data: {
         kind: string;
-        scalar: { value: number | string | boolean } | null;
+        scalar: { value: number | string | boolean; severity?: string; tsNs?: number } | null;
       }) => void;
       onError?: (error: { code: string; message: string }) => void;
       intervalMs?: number;
@@ -58,7 +58,7 @@ describe('createFoxFormulaSubscriber', () => {
     expect(options.intervalMs).toBe(500);
 
     options.onResult({ kind: 'scalar', scalar: { value: true } });
-    expect(onResult).toHaveBeenCalledWith(true);
+    expect(onResult).toHaveBeenLastCalledWith(true, {});
 
     options.onResult({ kind: 'waveform', scalar: null });
     expect(onResult).toHaveBeenCalledTimes(1);
@@ -69,5 +69,30 @@ describe('createFoxFormulaSubscriber', () => {
 
     stop();
     expect(unsubscribe).toHaveBeenCalledTimes(1);
+  });
+
+  it('forwards result severity and timestamp as metadata', () => {
+    let deliver: ((data: { kind: string; scalar: unknown }) => void) | null = null;
+    const fake: FoxServiceLike = {
+      subscribe: (_spec, options) => {
+        deliver = options.onResult as (data: { kind: string; scalar: unknown }) => void;
+        return () => {};
+      },
+    };
+    const onResult = vi.fn();
+    createFoxFormulaSubscriber(fake).subscribe(SPEC, { onResult });
+
+    deliver!({
+      kind: 'scalar',
+      scalar: { value: -1.5, severity: 'MINOR', tsNs: 1_700_000_000_123_456_000, inputsUsed: {} },
+    });
+    expect(onResult).toHaveBeenLastCalledWith(-1.5, {
+      severity: 'MINOR',
+      timestampMs: 1_700_000_000_123,
+    });
+
+    // A severity this client does not know reads as INVALID (HarePVService parity).
+    deliver!({ kind: 'scalar', scalar: { value: 2, severity: 'WEIRD', tsNs: 0, inputsUsed: {} } });
+    expect(onResult).toHaveBeenLastCalledWith(2, { severity: 'INVALID' });
   });
 });

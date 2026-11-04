@@ -22,6 +22,7 @@
 //    text is what CarbonPVButton actually shows.
 
 import type { WidgetProps, WidgetType } from '@slaclab/canopy-screen-widgets';
+import { isFoxRef } from '../foxRef.js';
 
 type IRProps = Record<string, unknown>;
 type PropMapper = (ir: IRProps, props: WidgetProps) => void;
@@ -102,7 +103,10 @@ const TYPE_MAP: Record<string, TypeMapEntry> = {
       put(p, 'format', ir.format);
       put(p, 'precision', num(ir.precision));
       put(p, 'showUnits', bool(ir.showUnits));
-      put(p, 'precisionFromPV', bool(ir.precisionFromPV));
+      // A fox:// formula channel carries no PV precision, so the authored
+      // precision is the only source (EDM without limitsFromDb; PyDM's
+      // precision-property fallback) unless the IR says otherwise.
+      put(p, 'precisionFromPV', bool(ir.precisionFromPV) ?? (isFoxRef(ir.pv) ? false : undefined));
       copyAppearance(ir, p);
     },
     consumes: ['pv', 'text', 'format', 'precision', 'showUnits', 'precisionFromPV', ...FOREGROUND],
@@ -113,8 +117,9 @@ const TYPE_MAP: Record<string, TypeMapEntry> = {
       put(p, 'pvName', str(ir.pv));
       put(p, 'confirmOnWrite', bool(ir.confirmOnWrite));
       put(p, 'confirmMessage', str(ir.confirmMessage));
+      copyAppearance(ir, p);
     },
-    consumes: ['pv', 'confirmOnWrite', 'confirmMessage'],
+    consumes: ['pv', 'confirmOnWrite', 'confirmMessage', ...FOREGROUND],
   },
   'pv-button': {
     type: 'PVButton',
@@ -323,6 +328,15 @@ const TYPE_MAP: Record<string, TypeMapEntry> = {
   },
 };
 
+// IR alarm flags → the widget set's names. The IR (widget registry qtPropMap)
+// calls PyDM's alarmSensitiveContent `alarmSensitive` (EDM fgAlarm) and
+// alarmSensitiveBorder `alarmBorder`. Translated only when present — the
+// render mode owns the defaults — and an explicit widget-named prop wins.
+const ALARM_ALIASES: readonly (readonly [irKey: string, widgetKey: string])[] = [
+  ['alarmSensitive', 'alarmSensitiveContent'],
+  ['alarmBorder', 'alarmSensitiveBorder'],
+];
+
 /**
  * Map an IR node's type + (macro-resolved, rule-patched) props onto a widget
  * registry type + component props. Returns undefined for IR types with no
@@ -338,9 +352,17 @@ export function mapIRWidget(
   const props: WidgetProps = {};
   entry.map(irProps, props);
 
+  const aliased: string[] = [];
+  for (const [irKey, widgetKey] of ALARM_ALIASES) {
+    const flag = bool(irProps[irKey]);
+    if (flag === undefined) continue;
+    aliased.push(irKey);
+    if (!(widgetKey in props) && irProps[widgetKey] === undefined) props[widgetKey] = flag;
+  }
+
   const consumed = entry.consumes;
   for (const [key, value] of Object.entries(irProps)) {
-    if (!consumed.includes(key) && !(key in props)) props[key] = value;
+    if (!consumed.includes(key) && !aliased.includes(key) && !(key in props)) props[key] = value;
   }
   return { type: entry.type, props };
 }
