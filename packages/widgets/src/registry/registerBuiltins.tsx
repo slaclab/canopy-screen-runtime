@@ -123,7 +123,7 @@ function StaticLabelWidget({ layout, props, isSelected }: WidgetRendererProps) {
       style={{
         width: layout.width,
         height: layout.height,
-        color: props.foregroundColor ?? '#f4f4f4',
+        color: props.foregroundColor,
         backgroundColor: (props.backgroundColor as string) ?? 'transparent',
         display: 'flex',
         alignItems: 'center',
@@ -639,7 +639,7 @@ export function registerBuiltinWidgets() {
     category: 'drawing',
     icon: 'TextShortParagraph',
     defaultLayout: { x: 0, y: 0, width: 120, height: 24 },
-    defaultProps: { text: 'Label', foregroundColor: '#f4f4f4', fontSize: 14, opacity: 0 },
+    defaultProps: { text: 'Label', fontSize: 14, opacity: 0 },
     component: StaticLabelWidget,
     propsSchema: [
       { key: 'text', label: 'Text', type: 'string', section: 'display' },

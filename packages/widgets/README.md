@@ -28,3 +28,11 @@ const def = widgetRegistry.get('PVTextDisplay');
 tokens the alarm helpers reference; apps may override them. Carbon's own
 styles must be loaded by the app. `LineWidget` is a render-only adaptation
 (vertex editing stays in the builder).
+
+The widget styles take their colours and fonts from the host theme contract
+of `@slaclab/canopy-shell`, with no fallbacks in `styles.css`: a host loads
+`@slaclab/canopy-shell/host-contract.css` (or defines the same names) before
+`styles.css`. The names the widgets read are `--canopy-bg-field`,
+`--canopy-border`, `--canopy-text-primary`, `--canopy-text-secondary`,
+`--canopy-font-ui` and `--canopy-font-mono`. The few literal colours that
+remain are prop defaults, each marked `canopy-allow-literal`.

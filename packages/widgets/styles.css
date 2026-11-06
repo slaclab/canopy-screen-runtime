@@ -7,12 +7,18 @@
 /* Alarm severity and selection color tokens referenced by the alarm helpers
    and widget styles below. Apps may override these. */
 :root {
+  /* canopy-allow-literal: widget prop default */
   --pydm-alarm-none: #24a148;
+  /* canopy-allow-literal: widget prop default */
   --pydm-alarm-minor: #f1c21b;
+  /* canopy-allow-literal: widget prop default */
   --pydm-alarm-major: #da1e28;
+  /* canopy-allow-literal: widget prop default */
   --pydm-alarm-invalid: #a56eff;
+  /* canopy-allow-literal: widget prop default */
   --pydm-alarm-disconnected: #6f6f6f;
 
+  /* canopy-allow-literal: widget prop default */
   --pydm-selection: #0f62fe;
 }
 
@@ -23,8 +29,8 @@
   align-items: center;
   gap: 6px;
   padding: 0 8px;
-  background-color: var(--cds-field-01, #262626);
-  border: 1px solid var(--cds-border-subtle, #393939);
+  background-color: var(--canopy-bg-field);
+  border: 1px solid var(--canopy-border);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -47,14 +53,14 @@
 
 .carbon-pv-display__label {
   font-size: 0.85em;
-  color: var(--cds-text-secondary, #8d8d8d);
+  color: var(--canopy-text-secondary);
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .carbon-pv-display__value {
-  font-family: 'IBM Plex Mono', monospace;
-  color: var(--cds-text-primary, #f4f4f4);
+  font-family: var(--canopy-font-mono);
+  color: var(--canopy-text-primary);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   overflow: hidden;
@@ -65,7 +71,7 @@
 
 /* Static caption (channel-less PyDMLabel): prose, no ellipsis — useFitText shrinks to fit. */
 .carbon-pv-display__value--static {
-  font-family: 'IBM Plex Sans', sans-serif;
+  font-family: var(--canopy-font-ui);
   text-align: left;
   text-overflow: clip;
 }
@@ -95,8 +101,21 @@
 }
 .carbon-pv-input .cds--text-input {
   height: 100%;
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: var(--canopy-font-mono);
   font-size: 0.8125rem;
+}
+
+/* An invalid field's message is drawn under the field, outside the widget's box: it paints above the widgets that follow, is never wider than its field, and sits on the display background. */
+.carbon-pv-input--invalid {
+  position: relative;
+  z-index: 1;
+}
+.carbon-pv-input .cds--form-requirement {
+  margin-top: 0.125rem;
+  padding: 0 0.25rem;
+  width: max-content;
+  max-width: 100%;
+  background: var(--pydm-display-background, var(--cds-layer, var(--cds-background)));
 }
 
 /* ── PV Button ────────────────────────────────────────────────────────────── */
