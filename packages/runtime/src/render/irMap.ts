@@ -11,8 +11,16 @@
 //  - `embedded-display` → recursive screen embedding
 //  - `unknown-widget` and any unmapped IR type → labeled placeholder box
 //
-// `related-display-button` renders as a plain button; its open-display
-// navigation action is not wired in runtime v0.1 (the viewer owns routing).
+// `related-display-button` renders as a plain button; its open-display action
+// runs through `dispatchActions` like any widget action.
+//
+// `irMapManifest()` publishes this table (plus the two renderer-native types)
+// as data: which IR props each type consumes and whether it copies its props
+// through verbatim. `serializeIrMapManifest()` adds each type's editor
+// metadata from irMeta.ts and is checked in as `packages/runtime/ir-map.json`
+// (regenerate with `node scripts/emit-ir-map.ts`). The viewer build ships it
+// as `dist/ir-map.json`, which slaclab/canopy reads as its widget catalog
+// when it packages the viewer.
 //
 // Two deliberate deviations from the builder's table, both because the
 // unified live components are the single render target here:
@@ -23,6 +31,7 @@
 
 import type { WidgetProps, WidgetType } from '@slaclab/canopy-screen-widgets';
 import { isFormulaRef } from '../formulaRef.js';
+import type { IrMeta } from './irMeta.js';
 
 type IRProps = Record<string, unknown>;
 type PropMapper = (ir: IRProps, props: WidgetProps) => void;
@@ -140,6 +149,9 @@ const TYPE_MAP: Record<string, TypeMapEntry> = {
       put(p, 'offLabel', str(ir.offLabel) ?? str(ir.label));
       put(p, 'pressValue', ir.pressValue);
       put(p, 'releaseValue', ir.releaseValue);
+      put(p, 'transparent', bool(ir.transparent));
+      put(p, 'onImage', str(ir.onImage));
+      put(p, 'offImage', str(ir.offImage));
     },
     consumes: [
       'pv',
@@ -150,6 +162,9 @@ const TYPE_MAP: Record<string, TypeMapEntry> = {
       'offLabel',
       'pressValue',
       'releaseValue',
+      'transparent',
+      'onImage',
+      'offImage',
     ],
   },
   'regular-button': {
@@ -162,8 +177,9 @@ const TYPE_MAP: Record<string, TypeMapEntry> = {
       }
       put(p, 'pressValue', ir.pressValue);
       put(p, 'releaseValue', ir.releaseValue);
+      put(p, 'transparent', bool(ir.transparent));
     },
-    consumes: ['label', 'pressValue', 'releaseValue'],
+    consumes: ['label', 'pressValue', 'releaseValue', 'transparent'],
   },
   'related-display-button': {
     type: 'PVButton',
@@ -330,6 +346,31 @@ const TYPE_MAP: Record<string, TypeMapEntry> = {
     },
     consumes: ['title', 'curves', 'yAxes', 'xLabels'],
   },
+  // Scalar PVs gathered into arrays: each curve lists one channel per sample.
+  'pv-array-plot': {
+    type: 'PVArrayPlot',
+    map: (ir, p) => {
+      put(p, 'title', str(ir.title));
+      put(p, 'curves', ir.curves);
+      put(p, 'yAxes', ir.yAxes);
+      put(p, 'xLabels', ir.xLabels);
+      put(p, 'mode', str(ir.mode));
+      put(p, 'scale', num(ir.scale));
+    },
+    consumes: ['title', 'curves', 'yAxes', 'xLabels', 'mode', 'scale'],
+  },
+  // Scatter/XY curves (PyDM-shaped): each curve pairs an x and a y channel.
+  'xy-plot': {
+    type: 'XYPlot',
+    map: (ir, p) => {
+      put(p, 'title', str(ir.title));
+      put(p, 'curves', ir.curves);
+      put(p, 'xAxis', ir.xAxis);
+      put(p, 'yAxes', ir.yAxes);
+      put(p, 'showLegend', bool(ir.showLegend));
+    },
+    consumes: ['title', 'curves', 'xAxis', 'yAxes', 'showLegend'],
+  },
 };
 
 // IR alarm flags → the widget set's names. The IR (widget registry qtPropMap)
@@ -369,4 +410,77 @@ export function mapIRWidget(
     if (!consumed.includes(key) && !aliased.includes(key) && !(key in props)) props[key] = value;
   }
   return { type: entry.type, props };
+}
+
+export interface IrMapManifestEntry {
+  /** IR prop keys the runtime reads for this type. */
+  consumes: string[];
+  /** True when every IR prop is copied through verbatim (SB-native identity types). */
+  verbatim: boolean;
+}
+
+/**
+ * Types the renderer draws itself before the TYPE_MAP lookup (see
+ * ScreenRenderer): the keys are the props it reads for each.
+ */
+const RENDERER_NATIVE: Record<string, readonly string[]> = {
+  'absolute-canvas': ['backgroundColor'],
+  'embedded-display': ['file', 'macros'],
+};
+
+/**
+ * The IR types this runtime renders, keyed by IR type, sorted for a stable
+ * diff: the consumed prop keys and whether the entry copies props verbatim.
+ */
+export function irMapManifest(): Record<string, IrMapManifestEntry> {
+  const all: Record<string, IrMapManifestEntry> = {};
+  for (const [type, entry] of Object.entries(TYPE_MAP)) {
+    all[type] = {
+      consumes: [...new Set(entry.consumes)],
+      verbatim: entry.map === copyVerbatim || entry.map === copyPvFlavoredVerbatim,
+    };
+  }
+  for (const [type, consumes] of Object.entries(RENDERER_NATIVE)) {
+    all[type] = { consumes: [...consumes], verbatim: false };
+  }
+  const sorted: Record<string, IrMapManifestEntry> = {};
+  for (const type of Object.keys(all).sort()) sorted[type] = all[type];
+  return sorted;
+}
+
+/** The runtime widget type an IR type renders as; undefined for renderer-native and unmapped types. */
+export function irRuntimeType(irType: string): WidgetType | undefined {
+  return TYPE_MAP[irType]?.type;
+}
+
+/** One `ir-map.json` entry: the manifest fields plus the type's editor metadata. */
+export type IrMapFileEntry = IrMapManifestEntry & IrMeta;
+
+/** Looks up an IR type's editor metadata (irMeta.ts's `irMetaFor`). */
+export type IrMetaLookup = (irType: string, runtimeType?: WidgetType) => IrMeta;
+
+/**
+ * The manifest with every entry's editor metadata, keyed and sorted as
+ * `irMapManifest()`. The lookup is passed in rather than imported so this
+ * module keeps type-only imports, which `scripts/emit-ir-map.ts` relies on to
+ * run under plain `node`.
+ */
+export function irMapFile(metaFor: IrMetaLookup): Record<string, IrMapFileEntry> {
+  const file: Record<string, IrMapFileEntry> = {};
+  for (const [type, entry] of Object.entries(irMapManifest())) {
+    const meta = metaFor(type, irRuntimeType(type));
+    file[type] = {
+      ...entry,
+      displayName: meta.displayName,
+      description: meta.description,
+      category: meta.category,
+      supportsChildren: meta.supportsChildren,
+    };
+  }
+  return file;
+}
+
+/** The exact text of the checked-in `ir-map.json`. */
+export function serializeIrMapManifest(metaFor: IrMetaLookup): string {
+  return `${JSON.stringify(irMapFile(metaFor), null, 2)}\n`;
 }

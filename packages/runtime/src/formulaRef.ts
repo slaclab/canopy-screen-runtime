@@ -7,7 +7,7 @@
 /** Prefix marking a value as a formula reference (`formula://<name>`) rather than a PV. */
 export const FORMULA_PREFIX = 'formula://';
 
-/** Whether `value` is a `formula://` formula reference. */
+/** Whether `value` is a `formula://` reference. */
 export function isFormulaRef(value: unknown): value is string {
   return typeof value === 'string' && value.startsWith(FORMULA_PREFIX);
 }
