@@ -5,7 +5,8 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { MockPVService } from '@slaclab/canopy-client';
+import { DISCONNECTED_PV, MockPVService } from '@slaclab/canopy-client';
+import type { PVData, PVListener, PVService } from '@slaclab/canopy-client';
 import { PVServiceProvider } from '@slaclab/canopy-react';
 import { registerBuiltinWidgets, widgetRegistry } from '@slaclab/canopy-screen-widgets';
 import type { PropertyValue, ScreenJSON, WidgetNode } from '@slaclab/canopy-screen-ir';
@@ -62,6 +63,8 @@ const RENDERABLE: [string, Record<string, PropertyValue>][] = [
   ['qwidget-container', {}],
   ['pv-radio-group', { pv: 'DEV:MODE' }],
   ['waveform-plot', { title: 'Trace', curves: [{ y_channel: 'DEV:WF', color: '#f00' }] }],
+  ['xy-plot', { curves: [{ x_channel: 'DEV:X', y_channel: 'DEV:Y' }] }],
+  ['pv-array-plot', { mode: 'bar', curves: [{ name: 'X', y_channels: ['DEV:A', 'DEV:B'] }] }],
   ['pv-checkbox', { pv: 'DEV:ENABLE', label: 'Enable' }],
   ['pv-enum-combobox', { pv: 'DEV:MODE' }],
   ['pv-slider', { pv: 'DEV:SP', min: 0, max: 10 }],
@@ -215,5 +218,68 @@ describe('per-widget-type rendering', () => {
     expect(errorBox.textContent).toContain('boom');
     // The sibling keeps rendering — containment is per-widget.
     expect(screen.getByText('survivor')).toBeTruthy();
+  });
+});
+
+// Fixture mode: a stub service serves fixed scalars per name; a disconnected
+// name keeps the client's empty value (0), which must still draw as a gap.
+class ScalarStubService implements PVService {
+  readonly isConnected = true;
+  private readonly values: Record<string, number | null>;
+  constructor(values: Record<string, number | null>) {
+    this.values = values;
+  }
+  private data(name: string): PVData {
+    const v = this.values[name];
+    return v === null || v === undefined
+      ? { ...DISCONNECTED_PV, value: 0 }
+      : { ...DISCONNECTED_PV, connected: true, value: v };
+  }
+  subscribe(name: string, listener: PVListener): () => void {
+    listener(this.data(name));
+    return () => {};
+  }
+  put(): void {}
+  getSnapshot(name: string): PVData | undefined {
+    return this.data(name);
+  }
+  connect(): void {}
+  disconnect(): void {}
+}
+
+describe('pv-array-plot through ScreenRenderer (fixture mode)', () => {
+  it.each(['bar', 'line'])('draws %s values with null gaps for disconnected channels', (mode) => {
+    const stub = new ScalarStubService({
+      'SR:BPM:1:X': 2e-6,
+      'SR:BPM:2:X': null,
+      'SR:BPM:3:X': -1e-6,
+    });
+    const node = {
+      type: 'pv-array-plot',
+      props: {
+        title: 'Orbit X',
+        mode,
+        scale: 1e6,
+        yAxes: [{ label: 'um' }],
+        curves: [{ name: 'X', y_channels: ['${S}:BPM:1:X', '${S}:BPM:2:X', '${S}:BPM:3:X'] }],
+      },
+    };
+    const { container } = render(
+      <PVServiceProvider service={stub}>
+        <ScreenRenderer screen={screenWith(node)} macros={{ S: 'SR' }} />
+      </PVServiceProvider>
+    );
+    expect(container.querySelectorAll('[data-testid="widget-placeholder"]')).toHaveLength(0);
+    const root = container.querySelector('[data-plot-values]');
+    expect(root).not.toBeNull();
+    const values = JSON.parse(root!.getAttribute('data-plot-values')!) as Record<
+      string,
+      (number | null)[]
+    >;
+    expect(Object.keys(values)).toEqual(['X']);
+    expect(values.X).toHaveLength(3);
+    expect(values.X![0]).toBeCloseTo(2);
+    expect(values.X![1]).toBeNull();
+    expect(values.X![2]).toBeCloseTo(-1);
   });
 });

@@ -385,20 +385,20 @@ describe('dispatchActions with a write gate', () => {
     expect(ctx.calls).toEqual(['put loc://M1=3', 'run M=1', 'put formula://calc=4']);
   });
 
-  it('sends upper-case LOC:// and FOX:// names to the gate (the router routes them to the machine)', async () => {
+  it('sends upper-case LOC:// and FORMULA:// names to the gate (the router routes them to the machine)', async () => {
     const ctx = makeCtx();
     const { gate, runs } = fakeGate(ctx.calls, [outcome('confirmed'), outcome('confirmed')]);
     await dispatchActions(
       [
         { type: 'write_pv', pvName: 'LOC://a', value: 1 },
-        { type: 'write_pv', pvName: 'FOX://b', value: 2 },
+        { type: 'write_pv', pvName: 'FORMULA://b', value: 2 },
       ],
       { ...ctx, gate }
     );
     expect(runs).toEqual([
       [
         { pv: 'LOC://a', value: 1 },
-        { pv: 'FOX://b', value: 2 },
+        { pv: 'FORMULA://b', value: 2 },
       ],
     ]);
     expect(ctx.calls.filter((c) => c.startsWith('put'))).toEqual([]);
