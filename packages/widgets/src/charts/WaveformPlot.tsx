@@ -1,11 +1,11 @@
 // ECharts line plot of the configured curves, with live per-curve PV data.
 
 import type { ComponentType, CSSProperties } from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 // echarts-for-react is CJS; under NodeNext + verbatimModuleSyntax its default
 // import isn't typed as a callable component, so resolve it at runtime below.
 import * as EChartsReactModule from 'echarts-for-react';
-import { usePV } from '@slaclab/canopy-react';
+import { useChartFont } from '@slaclab/canopy-shell';
 
 interface EChartsProps {
   option: unknown;
@@ -16,6 +16,8 @@ interface EChartsProps {
 const _mod = EChartsReactModule as unknown as { default?: unknown };
 const ReactECharts = (_mod.default ?? EChartsReactModule) as ComponentType<EChartsProps>;
 import type { WidgetRendererProps } from '../registry/WidgetRegistry.js';
+import { CurveSubscriber, dashFromLineStyle, type CurveData } from './curveData.js';
+import { PLOT_COLORS, emphasisFor, themedAxisParts } from './plotTheme.js';
 
 interface CurveConfig {
   y_channel?: string;
@@ -33,13 +35,6 @@ interface AxisConfig {
   orientation?: string;
 }
 
-// Maps PyDM's numeric lineStyle (Qt::PenStyle: 1 solid, 2 dash, 3 dot) to ECharts.
-function dashFromLineStyle(style: number | undefined): 'solid' | 'dashed' | 'dotted' {
-  if (style === 2) return 'dashed';
-  if (style === 3 || style === 4) return 'dotted';
-  return 'solid';
-}
-
 function asCurves(value: unknown): CurveConfig[] {
   if (!Array.isArray(value)) return [];
   return value.filter((c): c is CurveConfig => typeof c === 'object' && c !== null);
@@ -53,56 +48,6 @@ function asAxes(value: unknown): AxisConfig[] {
 // PyDM plot titles are sometimes HTML; ECharts wants plain text.
 function stripHtml(value: string): string {
   return value.replace(/<[^>]*>/g, '').trim();
-}
-
-/** Coerce a PV value to a numeric array (waveform) — scalars become a 1-point series. */
-function toNumberArray(value: unknown): number[] {
-  if (Array.isArray(value)) {
-    return value
-      .map((v) => (typeof v === 'number' ? v : Number(v)))
-      .filter((n) => Number.isFinite(n));
-  }
-  if (typeof value === 'number' && Number.isFinite(value)) return [value];
-  if (typeof value === 'string') {
-    const n = Number(value);
-    return Number.isFinite(n) ? [n] : [];
-  }
-  return [];
-}
-
-/** One live series: its y (and optional x) samples, keyed by curve index. */
-interface CurveData {
-  y: number[];
-  x?: number[];
-}
-
-// A stable per-curve component (not a loop over usePV) so hook count stays
-// constant across renders. Subscribes to one curve's channels and reports its
-// latest arrays up by index; renders nothing.
-function CurveSubscriber({
-  index,
-  yChannel,
-  xChannel,
-  onData,
-}: {
-  index: number;
-  yChannel: string | undefined;
-  xChannel: string | undefined;
-  onData: (index: number, data: CurveData) => void;
-}) {
-  const yPV = usePV(yChannel);
-  const xPV = usePV(xChannel ?? undefined);
-
-  const y = yPV.connected ? toNumberArray(yPV.value) : [];
-  const x = xChannel && xPV.connected ? toNumberArray(xPV.value) : undefined;
-
-  // Report after render (not during); key on the samples so only real changes fire.
-  const key = `${y.length}:${y[0] ?? ''}:${y[y.length - 1] ?? ''}:${x ? x.length : 'n'}`;
-  useEffect(() => {
-    onData(index, { y, x });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index, key, onData]);
-  return null;
 }
 
 export function WaveformPlot({ layout, props }: WidgetRendererProps) {
@@ -121,6 +66,12 @@ export function WaveformPlot({ layout, props }: WidgetRendererProps) {
       return { ...prev, [index]: data };
     });
   }, []);
+
+  // Chart text does not inherit CSS: draw with the wrapper's own family, named
+  // only once it has loaded so the option changes (and the chart redraws) then.
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const { fontFamily, ready } = useChartFont(wrapperRef);
+  const chartFont = ready ? fontFamily : undefined;
 
   const option = useMemo(() => {
     const yAxes = asAxes(rawYAxes);
@@ -142,6 +93,7 @@ export function WaveformPlot({ layout, props }: WidgetRendererProps) {
           type: dashFromLineStyle(c.lineStyle),
         },
         itemStyle: { color: c.color },
+        ...(emphasisFor(c.color) ? { emphasis: emphasisFor(c.color) } : {}),
       };
     });
 
@@ -149,28 +101,41 @@ export function WaveformPlot({ layout, props }: WidgetRendererProps) {
     return {
       backgroundColor: 'transparent',
       animation: false,
+      textStyle: { fontFamily: chartFont },
       title: title
-        ? { text: stripHtml(title), left: 'center', textStyle: { fontSize: 11 } }
+        ? {
+            text: stripHtml(title),
+            left: 'center',
+            textStyle: { fontSize: 11, color: PLOT_COLORS.title },
+          }
         : undefined,
       grid: { left: 48, right: 16, top: title ? 32 : 16, bottom: 28 },
       tooltip: { trigger: 'axis' as const },
       xAxis: {
         type: (anyX ? 'value' : 'category') as 'value' | 'category',
         name: xLabels[0] ?? '',
-        axisLabel: { fontSize: 9 },
+        ...themedAxisParts(),
+        axisLabel: { fontSize: 9, color: PLOT_COLORS.text },
       },
       yAxis: {
         type: 'value' as const,
         name: yAxes[0]?.label ?? '',
-        axisLabel: { fontSize: 9 },
+        ...themedAxisParts(),
+        axisLabel: { fontSize: 9, color: PLOT_COLORS.text },
       },
-      legend: series.length > 1 ? { bottom: 0, textStyle: { fontSize: 9 } } : undefined,
+      legend:
+        series.length > 1
+          ? { bottom: 0, textStyle: { fontSize: 9, color: PLOT_COLORS.text } }
+          : undefined,
       series,
     };
-  }, [curves, liveData, rawYAxes, title, rawXLabels]);
+  }, [curves, liveData, rawYAxes, title, rawXLabels, chartFont]);
 
   return (
-    <div style={{ width: layout.width, height: layout.height, overflow: 'hidden' }}>
+    <div
+      ref={wrapperRef}
+      style={{ width: layout.width, height: layout.height, overflow: 'hidden' }}
+    >
       {curves.map((c, i) => (
         <CurveSubscriber
           key={i}

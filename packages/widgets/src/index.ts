@@ -93,6 +93,7 @@ export { ArcWidget } from './drawing/ArcWidget.js';
 export { LineWidget } from './drawing/LineWidget.js';
 export { ScreenImageWidget } from './drawing/ScreenImageWidget.js';
 export { WaveformPlot } from './charts/WaveformPlot.js';
+export { XYPlot } from './charts/XYPlot.js';
 
 export { useFitText, computeFitFontSize, MIN_FONT_SIZE } from './shared/useFitText.js';
 export type { UseFitTextResult } from './shared/useFitText.js';

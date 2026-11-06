@@ -14,6 +14,8 @@ import {
   CarbonPVProgressBar,
   CarbonPVByteIndicator,
 } from '../pv-wrappers/CarbonWidgets.js';
+import { XYPlot } from '../charts/XYPlot.js';
+import { PVArrayPlot } from '../charts/PVArrayPlot.js';
 
 describe('registerBuiltinWidgets', () => {
   registerBuiltinWidgets();
@@ -27,6 +29,8 @@ describe('registerBuiltinWidgets', () => {
     'PVByteIndicator',
     'ScreenImage',
     'Polygon',
+    'XYPlot',
+    'PVArrayPlot',
     // Plus the long-standing set, as a sanity check.
     'PVTextDisplay',
     'PVButton',
@@ -60,5 +64,26 @@ describe('live-component unification', () => {
     ['PVByteIndicator', CarbonPVByteIndicator],
   ] as const)('%s registers the live Carbon component', (type, component) => {
     expect(widgetRegistry.get(type)!.component).toBe(component);
+  });
+});
+
+describe('XYPlot registration', () => {
+  registerBuiltinWidgets();
+
+  it('registers XYPlot as the chart component for the xy-plot IR type', () => {
+    const def = widgetRegistry.get('XYPlot');
+    expect(def!.component).toBe(XYPlot);
+    expect(def!.category).toBe('chart');
+  });
+});
+
+describe('PVArrayPlot registration', () => {
+  registerBuiltinWidgets();
+
+  it('registers PVArrayPlot as the chart component for the pv-array-plot IR type', () => {
+    const def = widgetRegistry.get('PVArrayPlot');
+    expect(def!.component).toBe(PVArrayPlot);
+    expect(def!.category).toBe('chart');
+    expect(def!.defaultProps).toMatchObject({ mode: 'bar' });
   });
 });

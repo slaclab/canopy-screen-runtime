@@ -18,6 +18,8 @@ import { LineWidget } from '../drawing/LineWidget.js';
 import { PolygonWidget } from '../drawing/PolygonWidget.js';
 import { ScreenImageWidget } from '../drawing/ScreenImageWidget.js';
 import { WaveformPlot } from '../charts/WaveformPlot.js';
+import { XYPlot } from '../charts/XYPlot.js';
+import { PVArrayPlot } from '../charts/PVArrayPlot.js';
 import { useFitText } from '../shared/useFitText.js';
 import { ArcWidget } from '../drawing/ArcWidget.js';
 import { useRenderProfile } from '../renderMode.js';
@@ -704,6 +706,43 @@ export function registerBuiltinWidgets() {
     defaultProps: { title: '' },
     component: WaveformPlot,
     propsSchema: [{ key: 'title', label: 'Title', type: 'string', section: 'display' }],
+  });
+
+  widgetRegistry.register({
+    type: 'XYPlot',
+    label: 'XY Plot',
+    category: 'chart',
+    icon: 'ChartLine',
+    defaultLayout: { x: 0, y: 0, width: 400, height: 300 },
+    defaultProps: { title: '' },
+    component: XYPlot,
+    propsSchema: [
+      { key: 'title', label: 'Title', type: 'string', section: 'display' },
+      { key: 'showLegend', label: 'Show Legend', type: 'boolean', section: 'display' },
+    ],
+  });
+
+  widgetRegistry.register({
+    type: 'PVArrayPlot',
+    label: 'PV Array Plot',
+    category: 'chart',
+    icon: 'ChartLine',
+    defaultLayout: { x: 0, y: 0, width: 400, height: 300 },
+    defaultProps: { title: '', mode: 'bar' },
+    component: PVArrayPlot,
+    propsSchema: [
+      { key: 'title', label: 'Title', type: 'string', section: 'display' },
+      {
+        key: 'mode',
+        label: 'Mode',
+        type: 'select',
+        section: 'display',
+        options: [
+          { label: 'Bar', value: 'bar' },
+          { label: 'Line', value: 'line' },
+        ],
+      },
+    ],
   });
 
   widgetRegistry.register({
