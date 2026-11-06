@@ -277,6 +277,8 @@
       "pv",
       "confirmOnWrite",
       "confirmMessage",
+      "precision",
+      "precisionFromPV",
       "foregroundColor",
       "backgroundColor",
       "borderColor",

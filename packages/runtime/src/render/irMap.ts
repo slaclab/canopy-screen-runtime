@@ -131,8 +131,17 @@ const TYPE_MAP: Record<string, TypeMapEntry> = {
       put(p, 'confirmOnWrite', bool(ir.confirmOnWrite));
       put(p, 'confirmMessage', str(ir.confirmMessage));
       copyAppearance(ir, p);
+      put(p, 'precision', num(ir.precision));
+      put(p, 'precisionFromPV', bool(ir.precisionFromPV));
     },
-    consumes: ['pv', 'confirmOnWrite', 'confirmMessage', ...FOREGROUND],
+    consumes: [
+      'pv',
+      'confirmOnWrite',
+      'confirmMessage',
+      'precision',
+      'precisionFromPV',
+      ...FOREGROUND,
+    ],
   },
   'pv-button': {
     type: 'PVButton',

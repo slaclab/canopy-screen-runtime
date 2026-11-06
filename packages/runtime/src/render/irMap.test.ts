@@ -161,6 +161,15 @@ describe('mapIRWidget contract', () => {
     expect(m?.props).toMatchObject({ label: 'LLRF 1', foregroundColor: '#123456' });
   });
 
+  it('carries precision and precisionFromPV from pv-text-input into PVTextInput', () => {
+    const m = mapIRWidget('pv-text-input', { pv: 'X', precision: 3, precisionFromPV: true });
+    expect(m?.type).toBe('PVTextInput');
+    expect(m?.props).toMatchObject({ pvName: 'X', precision: 3, precisionFromPV: true });
+    expect(irMapManifest()['pv-text-input'].consumes).toEqual(
+      expect.arrayContaining(['precision', 'precisionFromPV'])
+    );
+  });
+
   it('puts transparent and the state images on pv-button', () => {
     const m = mapIRWidget('pv-button', {
       pv: 'X',

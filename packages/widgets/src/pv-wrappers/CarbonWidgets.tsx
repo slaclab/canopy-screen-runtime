@@ -23,6 +23,7 @@ import { useResolveAsset } from '../assets.js';
 import { useGatedWrite } from '../writeGate/useGatedWrite.js';
 import { parseNumericEntry } from './numericEntry.js';
 import { hostInertReason, ownInertReason, useInert, useInertOnInner } from '../writeGate/inert.js';
+import { displayText, entryText } from './pvText.js';
 
 /**
  * A 50%-alpha glow of `color`. A literal hex keeps the absolute path: an existing hex
@@ -56,29 +57,6 @@ function noState(pvName: unknown, pv: { connected: boolean }, isEditing: boolean
 /** The `data-pv-nostate` attribute, present only while there is no state to show. */
 function noStateAttr(nostate: boolean): { 'data-pv-nostate'?: 'true' } {
   return nostate ? { 'data-pv-nostate': 'true' } : {};
-}
-
-/**
- * Text for a connected PV. The service's `displayValue` (formatted with the
- * PV's own precision/units) unless the widget opts out of PV precision
- * (`precisionFromPV: false`, PyDM semantics) and authors a `precision`:
- * then numeric, non-enum values are fixed to that precision.
- */
-function liveDisplayText(
-  pv: { value: unknown; displayValue: string; units: string; enumChoices?: string[] },
-  props: Record<string, unknown>
-): string {
-  const precision = props.precision;
-  if (
-    props.precisionFromPV !== false ||
-    typeof precision !== 'number' ||
-    typeof pv.value !== 'number' ||
-    pv.enumChoices?.[pv.value] !== undefined
-  ) {
-    return pv.displayValue;
-  }
-  const fixed = pv.value.toFixed(Math.min(20, Math.max(0, Math.trunc(precision))));
-  return pv.units ? `${fixed} ${pv.units}` : fixed;
 }
 
 /** An authored colour/font prop (a non-empty string), else undefined. */
@@ -193,7 +171,7 @@ export function CarbonPVTextDisplay({ layout, props, isSelected }: WidgetRendere
   const onCarbonField = !isStatic && foregroundColor === undefined && backgroundColor === undefined;
   const inset = onCarbonField ? profile.fieldInset : profile.textInset;
   const value = pv.connected
-    ? liveDisplayText(pv, props)
+    ? displayText(pv, props)
     : isStatic
       ? staticText
       : alarm.blank
@@ -348,18 +326,7 @@ export function CarbonPVTextInput({
         invalid={rejected !== null}
         invalidText={rejected ?? ''}
         size="sm"
-        value={
-          draft ??
-          (pv.connected
-            ? typeof pv.value === 'number' && pv.enumChoices?.[pv.value] !== undefined
-              ? pv.enumChoices[pv.value]
-              : typeof pv.value === 'number' && pv.precision > 0
-                ? pv.value.toFixed(pv.precision)
-                : String(pv.value)
-            : alarm.blank
-              ? ''
-              : '---')
-        }
+        value={draft ?? (pv.connected ? entryText(pv, props) : alarm.blank ? '' : '---')}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
           if (!inert.inert) setDraft(e.target.value);
         }}
@@ -1165,7 +1132,7 @@ export function CarbonPVMeter({ layout, props, isEditing }: WidgetRendererProps)
           lineHeight: 1.1,
         }}
       >
-        {showValue && !nostate && <span>{pv.connected ? pv.displayValue : '---'}</span>}
+        {showValue && !nostate && <span>{pv.connected ? displayText(pv, props) : '---'}</span>}
         {label && <div>{label}</div>}
       </div>
     </div>
