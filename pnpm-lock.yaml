@@ -122,6 +122,21 @@ importers:
         specifier: ^4.1.6
         version: 4.1.6(@types/node@24.13.3)(jsdom@26.1.0)(vite@8.0.12(@types/node@24.13.3)(sass@1.101.0)(yaml@2.9.1))
 
+  packages/dock-engine:
+    devDependencies:
+      '@types/node':
+        specifier: ^24.12.3
+        version: 24.13.3
+      typescript:
+        specifier: ~6.0.2
+        version: 6.0.3
+      vite:
+        specifier: ^8.0.12
+        version: 8.0.12(@types/node@24.13.3)(sass@1.101.0)(yaml@2.9.1)
+      vitest:
+        specifier: ^4.1.6
+        version: 4.1.6(@types/node@24.13.3)(jsdom@26.1.0)(vite@8.0.12(@types/node@24.13.3)(sass@1.101.0)(yaml@2.9.1))
+
   packages/runtime:
     dependencies:
       '@slaclab/canopy-screen-ir':

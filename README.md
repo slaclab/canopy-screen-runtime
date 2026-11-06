@@ -11,12 +11,13 @@ from [Canopy](https://github.com/slaclab/Canopy) through the
 
 ## Workspace
 
-| Package                                              | Purpose                                                                                                               |
-| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| [`@slaclab/canopy-screen-widgets`](packages/widgets) | Carbon PV widgets, drawing primitives, and the widget registry shared by builder and runtime                          |
-| [`@slaclab/canopy-screen-runtime`](packages/runtime) | `ScreenRenderer` — macros, embedded screens, per-widget containment, and widget rules compiled for the Formula Engine |
-| [`@slaclab/canopy-screen-codegen`](packages/codegen) | `generateTSX` — ejectable React code from screen models (generation direction only)                                   |
-| [`viewer`](apps/viewer)                              | **Canopy Screens** — browse `/` and deep-link `/s/:category/:id?MACRO=value` over canopy-screens content              |
+| Package                                               | Purpose                                                                                                               |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| [`@slaclab/canopy-screen-widgets`](packages/widgets)  | Carbon PV widgets, drawing primitives, and the widget registry shared by builder and runtime                          |
+| [`@slaclab/canopy-screen-runtime`](packages/runtime)  | `ScreenRenderer` — macros, embedded screens, per-widget containment, and widget rules compiled for the Formula Engine |
+| [`@slaclab/canopy-screen-codegen`](packages/codegen)  | `generateTSX` — ejectable React code from screen models (generation direction only)                                   |
+| [`@slaclab/canopy-dock-engine`](packages/dock-engine) | The workspace dock's layout engine (pure functions) and its golden cases                                              |
+| [`viewer`](apps/viewer)                               | **Canopy Screens** — browse `/` and deep-link `/s/:category/:id?MACRO=value` over canopy-screens content              |
 
 The Screen IR contract, `@slaclab/canopy-screen-ir`, and the client, React and
 shell packages are [canopy-sdk-js](https://github.com/slaclab/canopy-sdk-js)

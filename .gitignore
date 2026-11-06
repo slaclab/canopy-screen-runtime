@@ -38,3 +38,6 @@ lerna-debug.log*
 
 # MkDocs
 site/
+
+# The dock engine bundle is committed (packages/dock-engine/README.md).
+!packages/dock-engine/dist/

@@ -1,0 +1,39 @@
+{
+  "name": "@slaclab/canopy-dock-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The workspace dock's layout engine (layout model, geometry, drop, open, close, hit-test) as pure functions, with its golden case files",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slaclab/canopy-screen-runtime.git",
+    "directory": "packages/dock-engine"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "canopy-source": "./src/index.ts",
+      "types": "./dist/dock-engine.d.mts",
+      "default": "./dist/dock-engine.mjs"
+    },
+    "./cases": {
+      "canopy-source": "./src/cases.ts",
+      "types": "./dist/cases.d.mts",
+      "default": "./dist/cases.mjs"
+    },
+    "./cases/*": "./cases/*"
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@types/node": "^24.12.3",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.12",
+    "vitest": "^4.1.6"
+  }
+}
