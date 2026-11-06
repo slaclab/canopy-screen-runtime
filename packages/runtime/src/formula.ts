@@ -39,6 +39,25 @@ export interface FormulaResultMeta {
   readonly timestampMs?: number;
 }
 
+/**
+ * A formula subscription error that keeps its origin's `code` and whether it
+ * is `retryable` (the subscription stays live and a later result supersedes
+ * it). Raised by the Formula Engine adapter for every error frame and by local formula
+ * evaluation for a dropped input; rule consumers read `retryable` to mark a
+ * widget stale instead of failed.
+ */
+export class FormulaError extends Error {
+  readonly code: string;
+  readonly retryable: boolean;
+
+  constructor(code: string, message: string, retryable: boolean) {
+    super(`${code}: ${message}`);
+    this.name = 'FormulaError';
+    this.code = code;
+    this.retryable = retryable;
+  }
+}
+
 export interface FormulaSubscribeOptions {
   /** Re-evaluation poll interval; omitted/0 = event-driven (on PV change). */
   intervalMs?: number;

@@ -6,6 +6,7 @@
 // is the minimal shape of its `subscribe`; the SDK class satisfies it (pinned
 // by the wiring test, which uses the real class as a dev dependency).
 
+import { FormulaError } from '../formula.js';
 import type {
   FormulaResultMeta,
   FormulaScalarValue,
@@ -51,6 +52,8 @@ interface FormulaEngineResultLike {
 interface FormulaEngineErrorLike {
   code: string;
   message: string;
+  /** The sdk's flag: true while the subscription stays live (a transient condition). */
+  retryable?: boolean;
 }
 
 export interface FormulaEngineServiceLike {
@@ -69,7 +72,8 @@ export interface FormulaEngineServiceLike {
  * FormulaSubscriber the rule engine consumes. Scalar results feed
  * `onResult` with the bare value plus its severity/timestamp metadata;
  * non-scalar results are ignored (rules and widget channels are scalar);
- * error frames map onto plain Errors.
+ * error frames map onto FormulaErrors that keep the frame's `code` and
+ * `retryable` (a frame without the flag reads as not retryable).
  */
 export function createFormulaEngineSubscriber(
   service: FormulaEngineServiceLike
@@ -84,7 +88,8 @@ export function createFormulaEngineSubscriber(
           }
         },
         onError: onError
-          ? (error) => onError(new Error(`${error.code}: ${error.message}`))
+          ? (error) =>
+              onError(new FormulaError(error.code, error.message, error.retryable === true))
           : undefined,
       });
     },

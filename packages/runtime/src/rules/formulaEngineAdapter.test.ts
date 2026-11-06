@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { FormulaEngineService } from '@slaclab/canopy-client';
 import type { FormulaSpec } from '../formula.js';
 import type { FormulaEngineServiceLike } from './formulaEngineAdapter.js';
+import { FormulaError } from '../formula.js';
 import { createFormulaEngineSubscriber } from './formulaEngineAdapter.js';
 
 const SPEC: FormulaSpec = {
@@ -94,5 +95,39 @@ describe('createFormulaEngineSubscriber', () => {
     // A severity this client does not know reads as INVALID (HarePVService parity).
     deliver!({ kind: 'scalar', scalar: { value: 2, severity: 'WEIRD', tsNs: 0, inputsUsed: {} } });
     expect(onResult).toHaveBeenLastCalledWith(2, { severity: 'INVALID' });
+  });
+
+  it("keeps the sdk's retryable flag on a typed error (code, retryable)", () => {
+    let onErrorFrame:
+      | ((error: { code: string; message: string; retryable?: boolean }) => void)
+      | undefined;
+    const fake: FormulaEngineServiceLike = {
+      subscribe: (_spec, options) => {
+        onErrorFrame = options.onError;
+        return () => {};
+      },
+    };
+    const onError = vi.fn();
+    createFormulaEngineSubscriber(fake).subscribe(SPEC, { onResult: () => {}, onError });
+
+    onErrorFrame?.({
+      code: 'FORMULA_INPUT_OUTAGE',
+      message: 'DEV:SEVR disconnected',
+      retryable: true,
+    });
+    onErrorFrame?.({ code: 'FORMULA_INVALID', message: 'bad spec', retryable: false });
+    // A frame without the flag (an older server) reads as not retryable.
+    onErrorFrame?.({ code: 'FORMULA_INVALID', message: 'no flag' });
+
+    expect(onError).toHaveBeenCalledTimes(3);
+    const [outage, invalid, noFlag] = onError.mock.calls.map((call) => call[0] as FormulaError);
+    expect(outage).toBeInstanceOf(FormulaError);
+    expect(outage).toBeInstanceOf(Error);
+    expect(outage!.code).toBe('FORMULA_INPUT_OUTAGE');
+    expect(outage!.retryable).toBe(true);
+    expect(outage!.message).toBe('FORMULA_INPUT_OUTAGE: DEV:SEVR disconnected');
+    expect(invalid!.code).toBe('FORMULA_INVALID');
+    expect(invalid!.retryable).toBe(false);
+    expect(noFlag!.retryable).toBe(false);
   });
 });
