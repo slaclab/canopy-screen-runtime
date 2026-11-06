@@ -19,6 +19,44 @@ import { useRenderProfile } from '../renderMode.js';
 import type { RenderProfile } from '../renderMode.js';
 import type { WidgetProps } from '../types.js';
 import { useFitText } from '../shared/useFitText.js';
+import { useResolveAsset } from '../assets.js';
+import { useGatedWrite } from '../writeGate/useGatedWrite.js';
+import { parseNumericEntry } from './numericEntry.js';
+import { hostInertReason, ownInertReason, useInert, useInertOnInner } from '../writeGate/inert.js';
+
+/**
+ * A 50%-alpha glow of `color`. A literal hex keeps the absolute path: an existing hex
+ * alpha is dropped before `80` is appended. A `var()` or `light-dark()` colour (a resolved
+ * colour role) cannot take a hex suffix, so it is mixed with transparent instead.
+ */
+export function glowColor(color: string): string {
+  if (/^\s*(var|light-dark)\(/i.test(color)) {
+    return `color-mix(in srgb, ${color} 50%, transparent)`;
+  }
+  if (/^#[0-9a-f]{8}$/i.test(color)) return `${color.slice(0, 7)}80`;
+  if (/^#[0-9a-f]{4}$/i.test(color)) return `${color.slice(0, 4)}80`;
+  return `${color}80`;
+}
+
+/**
+ * Whether a state widget shows "no state" for its own PV: a machine PV is
+ * bound, it is not connected, and the widget renders live (an editor preview
+ * keeps its design look). A disconnected PV's value is a placeholder (`0`),
+ * never data, so state and value widgets draw nothing from it and carry
+ * `data-pv-nostate="true"`. A `loc://` local never reaches a machine (the link
+ * state skips it too): an undeclared local reads disconnected until it is
+ * written, and its widget keeps its normal rendering.
+ */
+function noState(pvName: unknown, pv: { connected: boolean }, isEditing: boolean): boolean {
+  if (typeof pvName !== 'string') return false;
+  const name = pvName.trim();
+  return name !== '' && !name.startsWith('loc://') && !pv.connected && !isEditing;
+}
+
+/** The `data-pv-nostate` attribute, present only while there is no state to show. */
+function noStateAttr(nostate: boolean): { 'data-pv-nostate'?: 'true' } {
+  return nostate ? { 'data-pv-nostate': 'true' } : {};
+}
 
 /**
  * Text for a connected PV. The service's `displayValue` (formatted with the
@@ -234,6 +272,8 @@ export function CarbonPVTextInput({
   const pv = usePV(props.pvName as string | undefined);
   const profile = useRenderProfile();
   const [draft, setDraft] = useState<string | null>(null);
+  const gated = useGatedWrite(pv);
+  const inert = useInert(ownInertReason(gated, pv.address));
   const alarm = readoutAlarm(pv, props, profile, styleProp(props.foregroundColor));
   // IR text/field colours and font on the Carbon input itself (inline beats
   // the .cds--text-input rules); absent props keep Carbon's field.
@@ -248,31 +288,65 @@ export function CarbonPVTextInput({
       : {}),
   };
 
-  const handleBlur = useCallback(() => {
-    if (draft !== null && pv.connected) {
-      const numVal = parseFloat(draft);
-      pv.put(isNaN(numVal) ? draft : numVal);
+  // A numeric PV (a number that is not an enum state) takes only a number: the
+  // draft is checked here, so an empty or non-numeric one never reaches the
+  // write dialog, and the reason sits under the field while it is typed.
+  const numeric = pv.connected && typeof pv.value === 'number' && pv.enumChoices === undefined;
+  const entry = numeric && draft !== null ? parseNumericEntry(draft) : null;
+  const rejected = entry !== null && !entry.ok ? entry.message : null;
+
+  const commit = useCallback(() => {
+    if (draft === null || !pv.connected) return;
+    if (inert.inert) {
       setDraft(null);
+      return;
     }
-  }, [draft, pv]);
+    if (numeric) {
+      const parsed = parseNumericEntry(draft);
+      if (!parsed.ok) return; // The field keeps the draft and says why.
+      void gated.write(parsed.value, { entered: draft });
+    } else {
+      const numVal = parseFloat(draft);
+      void gated.write(isNaN(numVal) ? draft : numVal);
+    }
+    setDraft(null);
+  }, [draft, numeric, pv.connected, gated, inert.inert]);
+
+  const handleBlur = useCallback(() => {
+    // Leaving the field with a draft it cannot write drops the draft, as Escape does.
+    if (rejected !== null) setDraft(null);
+    else commit();
+  }, [rejected, commit]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter') handleBlur();
+      if (e.key === 'Enter') commit();
       if (e.key === 'Escape') setDraft(null);
     },
-    [handleBlur]
+    [commit]
   );
+
+  const className = [
+    'carbon-pv-input',
+    isSelected ? 'carbon-pv-input--selected' : '',
+    rejected !== null ? 'carbon-pv-input--invalid' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <div
-      className={`carbon-pv-input ${isSelected ? 'carbon-pv-input--selected' : ''}`}
+      className={className}
       style={{ width: layout.width, height: layout.height, ...alarm.frame }}
+      {...inert.hover}
     >
       <TextInput
+        {...inert.attrs}
         id={`pv-input-${id}`}
         labelText={(props.label as string) ?? ''}
         hideLabel={!props.label}
+        invalid={rejected !== null}
+        invalidText={rejected ?? ''}
         size="sm"
         value={
           draft ??
@@ -286,13 +360,16 @@ export function CarbonPVTextInput({
               ? ''
               : '---')
         }
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDraft(e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+          if (!inert.inert) setDraft(e.target.value);
+        }}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         disabled={!pv.connected && !!props.pvName}
-        readOnly={isEditing}
+        readOnly={isEditing || inert.inert}
         style={inputStyle}
       />
+      {inert.note}
     </div>
   );
 }
@@ -331,6 +408,10 @@ export function CarbonPVButton({ layout, props, isEditing }: WidgetRendererProps
   const foregroundColor = (props.foregroundColor as string) ?? '#ffffff';
   const baseBg = (props.backgroundColor as string) ?? '#0f62fe';
 
+  // A disconnected readback has no state: no state colour, image or label.
+  // A control-only button (no readbackPV) keeps its normal rendering.
+  const nostate = noState(props.readbackPV, readbackPV, isEditing);
+
   // EDM/PyDM treat the state value as an INTEGER: 0.5 is OFF (trunc -> 0).
   const isOn =
     readbackPV.connected &&
@@ -349,22 +430,36 @@ export function CarbonPVButton({ layout, props, isEditing }: WidgetRendererProps
   };
   const pressValue = writeValue(props.pressValue);
   const releaseValue = writeValue(props.releaseValue);
+  const gated = useGatedWrite(controlPV);
+  // Inert for its own control write, or for the actions its host runs on a click.
+  const inert = useInert(ownInertReason(gated, controlPV.address) ?? hostInertReason(props));
 
+  // One run per click.
   const handlePress = useCallback(() => {
-    if (isEditing || !controlPV.address) return;
-    if (buttonType === 'toggle') {
-      controlPV.put(isOn ? 0 : 1);
-    } else {
-      controlPV.put(pressValue ?? 1);
-    }
-  }, [isEditing, controlPV, buttonType, isOn, pressValue]);
+    if (isEditing || inert.inert || !controlPV.address) return;
+    void gated.write(buttonType === 'toggle' ? (isOn ? 0 : 1) : (pressValue ?? 1));
+  }, [isEditing, inert.inert, controlPV.address, gated, buttonType, isOn, pressValue]);
 
-  const handleRelease = useCallback(() => {
-    if (isEditing || !controlPV.address) return;
-    if (buttonType !== 'toggle' && releaseValue !== undefined) {
-      controlPV.put(releaseValue);
-    }
-  }, [isEditing, controlPV, buttonType, releaseValue]);
+  // A momentary press: the hook pairs it with the release (see useGatedWrite.press).
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (isEditing || inert.inert || !controlPV.address || releaseValue === undefined) return;
+      if (e.button > 0) return; // primary button / touch / pen contact only
+      void gated.press(pressValue ?? 1, releaseValue, e.pointerId);
+    },
+    [isEditing, inert.inert, controlPV.address, gated, pressValue, releaseValue]
+  );
+
+  // State images (Phoebus bool_button on/off image): readback on -> onImage,
+  // off or disconnected -> offImage. A src that fails to load falls back to
+  // the label; tracking the failed src (not a flag) lets a new src retry.
+  const resolveAsset = useResolveAsset();
+  const imageRef = nostate
+    ? undefined
+    : ((isOn ? props.onImage : props.offImage) as string | undefined);
+  const imageSrc = imageRef ? resolveAsset(imageRef) : undefined;
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const showImage = imageSrc !== undefined && failedSrc !== imageSrc;
 
   // Visibility PV: hide at runtime when its value is falsy
   if (!isEditing && props.visibilityPV && visibilityPV.connected) {
@@ -377,15 +472,21 @@ export function CarbonPVButton({ layout, props, isEditing }: WidgetRendererProps
   // Invisible toggle: hide at runtime, dim in editor
   if (!isEditing && invisible) return null;
 
+  // Phoebus transparent=true: no painted chrome at all. It short-circuits every
+  // background source below; the keyword (not an omitted property) is needed,
+  // or Chromium paints its UA ButtonFace grey.
+  const transparent = props.transparent === true;
+
   // Background precedence: a live color PV wins; then EDM state colors
   // (onColor/offColor track the readback, the EDM toggle look); then the
   // authored static background.
   const stateBg =
-    props.onColor || props.offColor
+    !nostate && (props.onColor || props.offColor)
       ? ((isOn ? props.onColor : props.offColor) as string | undefined)
       : undefined;
-  const backgroundColor =
-    props.colorPV && colorPV.connected && typeof colorPV.value === 'string'
+  const backgroundColor = transparent
+    ? 'transparent'
+    : props.colorPV && colorPV.connected && typeof colorPV.value === 'string'
       ? colorPV.value
       : (stateBg ?? baseBg);
 
@@ -393,6 +494,9 @@ export function CarbonPVButton({ layout, props, isEditing }: WidgetRendererProps
   if (labelType === 'pvState') {
     // displayValue maps enum ordinals to their state strings (EDM parity).
     label = readbackPV.connected ? readbackPV.displayValue : '';
+  } else if (nostate) {
+    // The on/off captions are state; only a plain authored label stays.
+    label = authoredLabel ?? '';
   } else if (hasAuthoredLabel) {
     label = isOn ? (onLabel ?? authoredLabel ?? '') : (offLabel ?? authoredLabel ?? '');
   } else {
@@ -407,26 +511,32 @@ export function CarbonPVButton({ layout, props, isEditing }: WidgetRendererProps
   }
 
   // With a release value the press/release pair must straddle the hold
-  // (EDM message-button semantics), so the writes ride mousedown/mouseup;
-  // otherwise a plain click writes the press value.
-  const pressHandlers =
-    releaseValue !== undefined && buttonType !== 'toggle'
-      ? { onMouseDown: handlePress, onMouseUp: handleRelease }
+  // (EDM message-button semantics), so the press rides pointerdown and the
+  // release follows the pointer coming up; otherwise a plain click writes the
+  // press value.
+  // An inert button has no press handler: a click or Enter writes nothing.
+  const pressHandlers = inert.inert
+    ? {}
+    : releaseValue !== undefined && buttonType !== 'toggle'
+      ? { onPointerDown: handlePointerDown }
       : { onClick: handlePress };
 
-  return (
+  const button = (
     <button
       {...pressHandlers}
+      {...inert.attrs}
+      {...noStateAttr(nostate)}
       style={{
         width: layout.width,
         height: layout.height,
         backgroundColor,
+        ...(transparent ? { boxShadow: 'none' } : {}),
         color: foregroundColor,
         fontFamily,
         fontSize,
         border: 'none',
         borderRadius: 2,
-        cursor: isEditing ? 'default' : 'pointer',
+        cursor: isEditing ? 'default' : inert.inert ? 'not-allowed' : 'pointer',
         opacity: invisible ? 0.35 : 1,
         padding: 0,
         display: 'flex',
@@ -434,40 +544,117 @@ export function CarbonPVButton({ layout, props, isEditing }: WidgetRendererProps
         justifyContent: 'center',
       }}
     >
-      {label}
+      {showImage ? (
+        <img
+          src={imageSrc}
+          alt={typeof label === 'string' ? label : ''}
+          onError={() => setFailedSrc(imageSrc)}
+          style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+        />
+      ) : (
+        label
+      )}
     </button>
+  );
+  // The description sits beside the button: inside it, it would join the name.
+  return inert.inert ? (
+    <>
+      {button}
+      {inert.note}
+    </>
+  ) : (
+    button
   );
 }
 
 /** PVSlider — Carbon Slider bound to PV */
 export function CarbonPVSlider({ id, layout, props, isSelected, isEditing }: WidgetRendererProps) {
   const pv = usePV(props.pvName as string | undefined);
+  const nostate = noState(props.pvName, pv, isEditing);
   const min = (props.minValue as number) ?? pv.lowerLimit ?? 0;
   const max = (props.maxValue as number) ?? pv.upperLimit ?? 100;
   const value = pv.connected ? (typeof pv.value === 'number' ? pv.value : 0) : 0;
+  const gated = useGatedWrite(pv);
+  const inert = useInert(ownInertReason(gated, pv.address));
 
-  const handleChange = useCallback(
-    ({ value: v }: { value: number }) => {
-      if (!isEditing) pv.put(v);
-    },
-    [isEditing, pv]
-  );
+  // The value under the user's hand while dragging or stepping; null when the
+  // slider shows the PV. It is written only on drag stop or key-up, and only
+  // when it differs from the PV's value.
+  const [local, setLocal] = useState<number | null>(null);
+  const localRef = useRef<number | null>(null);
+  const setLocalValue = (v: number | null) => {
+    localRef.current = v;
+    setLocal(v);
+  };
+
+  const handleChange = ({ value: v }: { value: number }) => {
+    if (isEditing || inert.inert) return;
+    setLocalValue(v === value ? null : v);
+  };
+
+  const commit = () => {
+    const v = localRef.current;
+    if (isEditing || v === null) return;
+    if (inert.inert) {
+      setLocalValue(null);
+      return;
+    }
+    if (v === value) {
+      setLocalValue(null);
+      return;
+    }
+    // Settled either way: a confirmed value now comes back as the PV's, and a
+    // non-confirmed one steps the reset key, remounting the slider on the PV's.
+    void gated.write(v).then(() => {
+      if (localRef.current === v) setLocalValue(null);
+    });
+  };
+
+  const handleKeyUp = (e: React.KeyboardEvent) => {
+    if (e.key.startsWith('Arrow')) commit();
+  };
 
   return (
     <div
       className={`carbon-pv-slider ${isSelected ? 'carbon-pv-slider--selected' : ''}`}
+      {...noStateAttr(nostate)}
+      // A read-only Carbon slider drops its thumb from the tab order, so the
+      // inert slider's box is the focus stop that carries the reason.
+      {...inert.attrs}
+      {...(inert.inert ? { tabIndex: 0 } : {})}
       style={{ width: layout.width, height: layout.height }}
+      onKeyUp={handleKeyUp}
     >
-      <Slider
-        id={`pv-slider-${id}`}
-        labelText=""
-        hideTextInput
-        min={min}
-        max={max}
-        value={value}
-        onChange={handleChange}
-        disabled={!pv.connected && !!props.pvName}
-      />
+      {inert.note}
+      {nostate ? (
+        // No value, so no thumb position: an empty, inert track.
+        <div
+          className="carbon-pv-slider__nostate"
+          style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center' }}
+        >
+          <div
+            style={{
+              width: '100%',
+              height: 2,
+              backgroundColor: 'var(--cds-border-subtle, #8d8d8d)',
+            }}
+          />
+        </div>
+      ) : (
+        <Slider
+          key={gated.resetKey}
+          id={`pv-slider-${id}`}
+          labelText=""
+          hideTextInput
+          min={min}
+          max={max}
+          value={local ?? value}
+          onChange={handleChange}
+          onRelease={commit}
+          disabled={!pv.connected && !!props.pvName}
+          readOnly={inert.inert}
+        />
+      )}
     </div>
   );
 }
@@ -476,19 +663,23 @@ export function CarbonPVSlider({ id, layout, props, isSelected, isEditing }: Wid
 export function CarbonPVToggle({ id, layout, props, isEditing }: WidgetRendererProps) {
   const pv = usePV(props.pvName as string | undefined);
   const isOn = pv.connected && (typeof pv.value === 'number' ? pv.value !== 0 : Boolean(pv.value));
+  const gated = useGatedWrite(pv);
+  const inert = useInert(ownInertReason(gated, pv.address));
 
   const handleToggle = useCallback(
     (checked: boolean) => {
-      if (!isEditing) pv.put(checked ? 1 : 0);
+      if (!isEditing && !inert.inert) void gated.write(checked ? 1 : 0);
     },
-    [isEditing, pv]
+    [isEditing, inert.inert, gated]
   );
 
   return (
     <div
       style={{ width: layout.width, height: layout.height, display: 'flex', alignItems: 'center' }}
+      {...inert.hover}
     >
       <Toggle
+        {...inert.attrs}
         id={`pv-toggle-${id}`}
         labelText=""
         hideLabel
@@ -498,14 +689,18 @@ export function CarbonPVToggle({ id, layout, props, isEditing }: WidgetRendererP
         labelA={(props.offLabel as string) ?? 'Off'}
         labelB={(props.onLabel as string) ?? 'On'}
         disabled={!pv.connected && !!props.pvName}
+        readOnly={inert.inert}
       />
+      {inert.note}
     </div>
   );
 }
 
 /** PVProgressBar — Carbon ProgressBar bound to PV */
-export function CarbonPVProgressBar({ layout, props, isSelected }: WidgetRendererProps) {
+export function CarbonPVProgressBar({ layout, props, isSelected, isEditing }: WidgetRendererProps) {
   const pv = usePV(props.pvName as string | undefined);
+  // Disconnected: no value, so no fill at all (never a bar at `0`).
+  const nostate = noState(props.pvName, pv, isEditing);
   const min = (props.minValue as number) ?? 0;
   const max = (props.maxValue as number) ?? 100;
   const value = pv.connected ? (typeof pv.value === 'number' ? pv.value : 0) : 0;
@@ -527,6 +722,7 @@ export function CarbonPVProgressBar({ layout, props, isSelected }: WidgetRendere
     return (
       <div
         className={`carbon-pv-progress carbon-pv-progress--vertical ${isSelected ? 'carbon-pv-progress--selected' : ''}`}
+        {...noStateAttr(nostate)}
         style={{
           width: layout.width,
           height: layout.height,
@@ -539,14 +735,16 @@ export function CarbonPVProgressBar({ layout, props, isSelected }: WidgetRendere
           boxSizing: 'border-box',
         }}
       >
-        <div
-          style={{
-            width: '100%',
-            height: `${percent}%`,
-            backgroundColor: fillColor,
-            transition: 'height 0.15s',
-          }}
-        />
+        {!nostate && (
+          <div
+            style={{
+              width: '100%',
+              height: `${percent}%`,
+              backgroundColor: fillColor,
+              transition: 'height 0.15s',
+            }}
+          />
+        )}
       </div>
     );
   }
@@ -554,27 +752,63 @@ export function CarbonPVProgressBar({ layout, props, isSelected }: WidgetRendere
   return (
     <div
       className={`carbon-pv-progress ${isSelected ? 'carbon-pv-progress--selected' : ''}`}
+      {...noStateAttr(nostate)}
       style={{ width: layout.width, height: layout.height }}
     >
-      <ProgressBar
-        label={(props.label as string) ?? ''}
-        hideLabel={!props.label}
-        value={percent}
-        status={status}
-        size="small"
-      />
+      {nostate ? (
+        // An empty track: Carbon's error status would paint a full red bar.
+        <div
+          className="carbon-pv-progress__nostate"
+          style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center' }}
+        >
+          <div
+            style={{
+              width: '100%',
+              height: 8,
+              backgroundColor: 'var(--cds-layer-accent, #393939)',
+            }}
+          />
+        </div>
+      ) : (
+        <ProgressBar
+          label={(props.label as string) ?? ''}
+          hideLabel={!props.label}
+          value={percent}
+          status={status}
+          size="small"
+        />
+      )}
     </div>
   );
 }
 
 /** PVLed — Custom LED indicator (no Carbon equivalent) */
-export function CarbonPVLed({ layout, props }: WidgetRendererProps) {
+export function CarbonPVLed({ layout, props, isEditing }: WidgetRendererProps) {
   const pv = usePV(props.pvName as string | undefined);
+  const nostate = noState(props.pvName, pv, isEditing);
   const isOn = pv.connected && (typeof pv.value === 'number' ? pv.value !== 0 : Boolean(pv.value));
   const onColor = (props.onColor as string) ?? '#24a148';
   const offColor = (props.offColor as string) ?? '#525252';
   const color = isOn ? onColor : offColor;
   const size = Math.min(layout.width, layout.height);
+
+  if (nostate) {
+    // No state: an unfilled ring, never the off colour.
+    return (
+      <div
+        className="carbon-pv-led"
+        data-pv-nostate="true"
+        style={{
+          width: size,
+          height: size,
+          borderRadius: '50%',
+          backgroundColor: 'transparent',
+          border: '1px solid var(--cds-border-subtle, #8d8d8d)',
+          boxSizing: 'border-box',
+        }}
+      />
+    );
+  }
 
   return (
     <div
@@ -585,7 +819,7 @@ export function CarbonPVLed({ layout, props }: WidgetRendererProps) {
         borderRadius: '50%',
         backgroundColor: color,
         boxShadow: isOn
-          ? `0 0 ${size / 2}px ${color}80, inset 0 -2px 4px rgba(0,0,0,0.3)`
+          ? `0 0 ${size / 2}px ${glowColor(color)}, inset 0 -2px 4px rgba(0,0,0,0.3)`
           : 'inset 0 2px 4px rgba(0,0,0,0.4)',
         transition: 'background-color 0.2s, box-shadow 0.2s',
         border: `1px solid rgba(255,255,255,0.1)`,
@@ -611,10 +845,16 @@ export function CarbonPVLed({ layout, props }: WidgetRendererProps) {
 export function CarbonPVDropdown({ id, layout, props, isEditing }: WidgetRendererProps) {
   const pv = usePV(props.pvName as string | undefined);
   const items = (props.customItems as string[]) ?? ['Option 1', 'Option 2', 'Option 3'];
+  const gated = useGatedWrite(pv);
+  const inert = useInert(ownInertReason(gated, pv.address));
+  // Carbon's Dropdown keeps its own description and title on its field button.
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  useInertOnInner(boxRef, 'button', inert);
 
   return (
-    <div style={{ width: layout.width, height: layout.height }}>
+    <div ref={boxRef} style={{ width: layout.width, height: layout.height }} {...inert.hover}>
       <Dropdown
+        key={gated.resetKey}
         id={`pv-dropdown-${id}`}
         titleText=""
         label={pv.connected ? String(pv.value) : 'Select...'}
@@ -622,10 +862,12 @@ export function CarbonPVDropdown({ id, layout, props, isEditing }: WidgetRendere
         itemToString={(item: string) => item}
         size="sm"
         disabled={!pv.connected && !!props.pvName}
+        readOnly={inert.inert}
         onChange={({ selectedItem }: { selectedItem: string | null }) => {
-          if (!isEditing && selectedItem) pv.put(selectedItem);
+          if (!isEditing && !inert.inert && selectedItem) void gated.write(selectedItem);
         }}
       />
+      {inert.note}
     </div>
   );
 }
@@ -666,16 +908,22 @@ export function CarbonPVRadioGroup({ id, layout, props, isEditing }: WidgetRende
     }
   }
 
+  const gated = useGatedWrite(pv);
+  const inert = useInert(ownInertReason(gated, pv.address));
   const handleChange = useCallback(
     (selection: string | number | undefined) => {
-      if (isEditing || typeof selection !== 'number') return;
-      pv.put(selection);
+      if (isEditing || inert.inert || typeof selection !== 'number') return;
+      void gated.write(selection);
     },
-    [isEditing, pv]
+    [isEditing, inert.inert, gated]
   );
 
   return (
-    <div style={{ width: layout.width, height: layout.height, overflow: 'hidden' }}>
+    <div
+      style={{ width: layout.width, height: layout.height, overflow: 'hidden' }}
+      {...inert.hover}
+    >
+      {inert.note}
       <div
         ref={innerRef}
         style={{
@@ -685,15 +933,17 @@ export function CarbonPVRadioGroup({ id, layout, props, isEditing }: WidgetRende
         }}
       >
         <RadioButtonGroup
+          key={gated.resetKey}
           name={`pv-radio-${id}`}
           orientation={orientation}
           valueSelected={selectedIndex >= 0 ? selectedIndex : undefined}
           onChange={handleChange}
           disabled={!pv.connected && !!props.pvName}
-          readOnly={isEditing}
+          readOnly={isEditing || inert.inert}
         >
           {items.map((item, index) => (
             <RadioButton
+              {...inert.attrs}
               key={`${id}-${index}`}
               id={`pv-radio-${id}-${index}`}
               labelText={item}
@@ -709,35 +959,60 @@ export function CarbonPVRadioGroup({ id, layout, props, isEditing }: WidgetRende
 /** PVCheckbox — Carbon Checkbox bound to PV (writes 1/0) */
 export function CarbonPVCheckbox({ id, layout, props, isEditing }: WidgetRendererProps) {
   const pv = usePV(props.pvName as string | undefined);
+  const nostate = noState(props.pvName, pv, isEditing);
   const isChecked =
     pv.connected && (typeof pv.value === 'number' ? pv.value !== 0 : Boolean(pv.value));
+  const gated = useGatedWrite(pv);
+  const inert = useInert(ownInertReason(gated, pv.address));
 
   const handleChange = useCallback(
     (_: unknown, { checked }: { checked: boolean }) => {
-      if (!isEditing) pv.put(checked ? 1 : 0);
+      if (!isEditing && !inert.inert) void gated.write(checked ? 1 : 0);
     },
-    [isEditing, pv]
+    [isEditing, inert.inert, gated]
   );
 
   return (
     <div
+      {...noStateAttr(nostate)}
+      {...inert.hover}
       style={{ width: layout.width, height: layout.height, display: 'flex', alignItems: 'center' }}
     >
-      <Checkbox
-        id={`pv-checkbox-${id}`}
-        labelText={(props.label as string) ?? ''}
-        checked={isChecked}
-        onChange={handleChange}
-        disabled={!pv.connected && !!props.pvName}
-        readOnly={isEditing}
-      />
+      {nostate ? (
+        // No state: an empty box (neither checked nor unchecked) and the label.
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span
+            className="carbon-pv-checkbox__nostate"
+            style={{
+              width: 14,
+              height: 14,
+              boxSizing: 'border-box',
+              border: '1px dashed var(--cds-border-subtle, #8d8d8d)',
+            }}
+          />
+          {(props.label as string) ?? ''}
+        </span>
+      ) : (
+        // Carbon puts `title` on the label, which draws the box: the hover.
+        <Checkbox
+          {...inert.attrs}
+          id={`pv-checkbox-${id}`}
+          labelText={(props.label as string) ?? ''}
+          checked={isChecked}
+          onChange={handleChange}
+          disabled={!pv.connected && !!props.pvName}
+          readOnly={isEditing || inert.inert}
+        />
+      )}
+      {inert.note}
     </div>
   );
 }
 
 /** PVByteIndicator — a row of LED dots, one per bit of the PV value */
-export function CarbonPVByteIndicator({ layout, props }: WidgetRendererProps) {
+export function CarbonPVByteIndicator({ layout, props, isEditing }: WidgetRendererProps) {
   const pv = usePV(props.pvName as string | undefined);
+  const nostate = noState(props.pvName, pv, isEditing);
   const value = pv.connected && typeof pv.value === 'number' ? pv.value : 0;
   const numBits = Math.max(1, (props.numBits as number) ?? 8);
   const startBit = (props.startBit as number) ?? 0;
@@ -757,6 +1032,7 @@ export function CarbonPVByteIndicator({ layout, props }: WidgetRendererProps) {
   return (
     <div
       className="carbon-pv-byte"
+      {...noStateAttr(nostate)}
       style={{
         width: layout.width,
         height: layout.height,
@@ -766,6 +1042,23 @@ export function CarbonPVByteIndicator({ layout, props }: WidgetRendererProps) {
       }}
     >
       {bits.map((on, i) => {
+        if (nostate) {
+          // No state: unfilled rings, never the off colour.
+          return (
+            <div
+              key={i}
+              style={{
+                width: size,
+                height: size,
+                borderRadius: '50%',
+                backgroundColor: 'transparent',
+                border: '1px solid var(--cds-border-subtle, #8d8d8d)',
+                boxSizing: 'border-box',
+                flex: '0 0 auto',
+              }}
+            />
+          );
+        }
         const color = on ? onColor : offColor;
         return (
           <div
@@ -776,7 +1069,7 @@ export function CarbonPVByteIndicator({ layout, props }: WidgetRendererProps) {
               borderRadius: '50%',
               backgroundColor: color,
               boxShadow: on
-                ? `0 0 ${size / 3}px ${color}80, inset 0 -1px 2px rgba(0,0,0,0.3)`
+                ? `0 0 ${size / 3}px ${glowColor(color)}, inset 0 -1px 2px rgba(0,0,0,0.3)`
                 : 'inset 0 1px 2px rgba(0,0,0,0.4)',
               border: '1px solid rgba(255,255,255,0.1)',
               flex: '0 0 auto',
@@ -789,8 +1082,10 @@ export function CarbonPVByteIndicator({ layout, props }: WidgetRendererProps) {
 }
 
 /** PVMeter — semicircular needle gauge (EDM activeMeterClass parity). */
-export function CarbonPVMeter({ layout, props }: WidgetRendererProps) {
+export function CarbonPVMeter({ layout, props, isEditing }: WidgetRendererProps) {
   const pv = usePV(props.pvName as string | undefined);
+  // Disconnected: no value, so no needle and no number.
+  const nostate = noState(props.pvName, pv, isEditing);
   const min = typeof props.min === 'number' ? props.min : pv.lowerLimit || 0;
   const max = typeof props.max === 'number' ? props.max : pv.upperLimit || 1;
   const span = max - min || 1;
@@ -814,7 +1109,10 @@ export function CarbonPVMeter({ layout, props }: WidgetRendererProps) {
     profile.alarmPalette
   );
   return (
-    <div style={{ width: w, height: h, position: 'relative', ...alarmBorder }}>
+    <div
+      {...noStateAttr(nostate)}
+      style={{ width: w, height: h, position: 'relative', ...alarmBorder }}
+    >
       <svg width={w} height={h} aria-label={label ?? 'meter'}>
         <path
           d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
@@ -836,14 +1134,17 @@ export function CarbonPVMeter({ layout, props }: WidgetRendererProps) {
             />
           );
         })}
-        <line
-          x1={cx}
-          y1={cy}
-          x2={nx}
-          y2={ny}
-          stroke={pv.connected ? 'var(--cds-support-success, #24a148)' : '#8d8d8d'}
-          strokeWidth={2}
-        />
+        {!nostate && (
+          <line
+            className="carbon-pv-meter__needle"
+            x1={cx}
+            y1={cy}
+            x2={nx}
+            y2={ny}
+            stroke={pv.connected ? 'var(--cds-support-success, #24a148)' : '#8d8d8d'}
+            strokeWidth={2}
+          />
+        )}
         <circle cx={cx} cy={cy} r={3} fill="var(--cds-text-primary, #161616)" />
       </svg>
       <div
@@ -856,7 +1157,7 @@ export function CarbonPVMeter({ layout, props }: WidgetRendererProps) {
           lineHeight: 1.1,
         }}
       >
-        {showValue && <span>{pv.connected ? pv.displayValue : '---'}</span>}
+        {showValue && !nostate && <span>{pv.connected ? pv.displayValue : '---'}</span>}
         {label && <div>{label}</div>}
       </div>
     </div>

@@ -26,7 +26,11 @@ const {
   CarbonPVButton,
   CarbonPVTextDisplay,
   CarbonPVTextInput,
+  CarbonPVLed,
   CarbonPVByteIndicator,
+  CarbonPVCheckbox,
+  CarbonPVMeter,
+  CarbonPVSlider,
 } = await import('./CarbonWidgets.js');
 
 afterEach(() => {
@@ -248,5 +252,91 @@ describe('IR colours on buttons and bit indicators', () => {
     const cells = container.querySelectorAll<HTMLElement>('.carbon-pv-byte > div');
     expect(cells[0].style.backgroundColor).toBe('rgb(0, 255, 0)');
     expect(cells[1].style.backgroundColor).toBe('rgb(0, 48, 0)');
+  });
+});
+
+// The stub PV above is disconnected: with an own PV bound, every state / value
+// widget shows "no state" — never the off colour or a value of 0.
+describe('own-PV disconnect: no state, no value', () => {
+  const nostate = (container: HTMLElement) => container.querySelector('[data-pv-nostate="true"]');
+
+  it('pv-led: an unfilled ring, never the off colour', () => {
+    const { container } = renderWith(CarbonPVLed, { pvName: 'X', offColor: '#525252' });
+    const led = container.querySelector<HTMLElement>('.carbon-pv-led')!;
+    expect(led.dataset.pvNostate).toBe('true');
+    expect(led.style.backgroundColor).toBe('transparent');
+    expect(container.querySelector('img')).toBeNull();
+  });
+
+  it('pv-byte-led: unfilled cells', () => {
+    const { container } = renderWith(CarbonPVByteIndicator, { pvName: 'X', numBits: 3 });
+    expect(nostate(container)).not.toBeNull();
+    const cells = container.querySelectorAll<HTMLElement>('.carbon-pv-byte > div');
+    expect(cells).toHaveLength(3);
+    for (const cell of cells) expect(cell.style.backgroundColor).toBe('transparent');
+  });
+
+  it('pv-checkbox: no checkbox state, the label stays', () => {
+    const { container } = renderWith(CarbonPVCheckbox, { pvName: 'X', label: 'Enable' });
+    expect(nostate(container)).not.toBeNull();
+    expect(container.querySelector('input')).toBeNull();
+    expect(container.textContent).toBe('Enable');
+  });
+
+  it('pv-meter: no needle, no number', () => {
+    const { container } = renderWith(CarbonPVMeter, { pvName: 'X', min: 0, max: 10 });
+    expect(nostate(container)).not.toBeNull();
+    expect(container.querySelector('.carbon-pv-meter__needle')).toBeNull();
+    expect(container.textContent).toBe('');
+  });
+
+  it('pv-progress-bar: no fill in either orientation', () => {
+    const horizontal = renderWith(CarbonPVProgressBar, { pvName: 'X', minValue: 0, maxValue: 100 });
+    expect(nostate(horizontal.container)).not.toBeNull();
+    expect(horizontal.container.querySelector('.cds--progress-bar')).toBeNull();
+    cleanup();
+    const vertical = renderWith(
+      CarbonPVProgressBar,
+      { pvName: 'X', orientation: 'vertical' },
+      { width: 10, height: 100 }
+    );
+    const bar = vertical.container.querySelector<HTMLElement>('.carbon-pv-progress--vertical')!;
+    expect(bar.dataset.pvNostate).toBe('true');
+    expect(bar.children).toHaveLength(0);
+  });
+
+  it('pv-slider: no thumb', () => {
+    const { container } = renderWith(CarbonPVSlider, { pvName: 'X', minValue: 0, maxValue: 10 });
+    expect(nostate(container)).not.toBeNull();
+    expect(container.querySelector('input')).toBeNull();
+    expect(container.querySelector('.cds--slider')).toBeNull();
+  });
+
+  it('pv-button: only with a readbackPV; a control-only button renders as before', () => {
+    const rb = renderWith(CarbonPVButton, {
+      controlPV: 'C',
+      readbackPV: 'R',
+      onLabel: 'On',
+      offLabel: 'Off',
+      offColor: '#ffff00',
+    });
+    const button = rb.container.querySelector('button')!;
+    expect(button.dataset.pvNostate).toBe('true');
+    expect(button.textContent).toBe('');
+    expect(button.style.backgroundColor).not.toBe('rgb(255, 255, 0)');
+    cleanup();
+    const ctrl = renderWith(CarbonPVButton, { controlPV: 'C', label: 'Go' });
+    expect(nostate(ctrl.container)).toBeNull();
+    expect(ctrl.container.textContent).toBe('Go');
+  });
+
+  it('no own PV bound, or an editor preview: the normal rendering', () => {
+    const unbound = renderWith(CarbonPVLed, { offColor: '#525252' });
+    expect(nostate(unbound.container)).toBeNull();
+    cleanup();
+    const C = CarbonPVMeter as React.FC<WidgetRendererProps>;
+    const editing = render(<C {...base} isEditing props={{ pvName: 'X' }} />);
+    expect(nostate(editing.container)).toBeNull();
+    expect(editing.container.querySelector('.carbon-pv-meter__needle')).not.toBeNull();
   });
 });

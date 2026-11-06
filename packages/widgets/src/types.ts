@@ -86,7 +86,7 @@ export const WIDGET_CATALOG = {
   indicators: ['PVLed', 'PVByteIndicator', 'PVMeter', 'PVGauge', 'PVTank', 'PVThermometer'],
   drawings: ['Rectangle', 'Ellipse', 'Line', 'Arc', 'Polygon', 'StaticLabel', 'ScreenImage'],
   containers: ['Group', 'EmbeddedScreen'],
-  charts: ['WaveformPlot'],
+  charts: ['WaveformPlot', 'XYPlot', 'PVArrayPlot'],
 } as const;
 
 export type WidgetType = (typeof WIDGET_CATALOG)[keyof typeof WIDGET_CATALOG][number];

@@ -52,6 +52,21 @@ export type { PVData, PVListener, PVService } from '@slaclab/canopy-client';
 export { AssetResolverContext, useResolveAsset } from './assets.js';
 export type { ResolveAsset } from './assets.js';
 
+export { WriteGate, useWriteGate } from './writeGate/WriteGate.js';
+export { useGatedWrite } from './writeGate/useGatedWrite.js';
+export { allConfirmed } from './writeGate/types.js';
+export { WRITES_INERT_PROP } from './writeGate/inert.js';
+export type {
+  WriteValue,
+  WriteOutcomeKind,
+  WriteOutcome,
+  WriteRequest,
+  WriteRunOptions,
+  WriteRunResult,
+  WriteGateService,
+} from './writeGate/types.js';
+export type { WritableHandle, GatedWrite, GatedWriteResult } from './writeGate/useGatedWrite.js';
+
 export { widgetRegistry } from './registry/WidgetRegistry.js';
 export type {
   WidgetDefinition,
