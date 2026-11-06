@@ -48,6 +48,11 @@ The viewer's [README](apps/viewer/README.md) documents pointing
 `VITE_SCREENS_BASE_URL` at a locally served canopy-screens checkout for the
 end-to-end smoke test.
 
+Git hooks (installed by `pnpm install`): a commit lints and formats its staged
+files and touches nothing outside its own checkout; if a check fails the commit
+is refused and the files stay as the checks left them. A push type-checks the
+workspace. CI decides.
+
 ## SDK dependencies: published vs linked (local dev)
 
 The `@slaclab/canopy-client` / `canopy-react` / `canopy-shell` /

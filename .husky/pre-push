@@ -1,0 +1,3 @@
+# Type-checks the workspace as it stands in this checkout. CI's type check
+# decides; this is the early copy of it.
+pnpm run typecheck

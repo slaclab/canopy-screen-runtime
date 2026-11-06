@@ -1,5 +1,5 @@
-# Type-check the workspace (builds packages, then checks tests too)
-pnpm run typecheck
-
-# Run lint-staged (eslint + prettier on staged files)
-pnpm lint-staged
+# Checks the staged files of this checkout and writes nothing another checkout
+# can see: no backup goes to the stash, which every worktree shares. A check
+# that fails refuses the commit and leaves the files as the checks left them.
+# Type-checking runs on push and in CI.
+pnpm lint-staged --no-stash --quiet
