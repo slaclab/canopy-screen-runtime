@@ -107,6 +107,9 @@ const FIXTURE: ScreenJSON = {
   },
 };
 
+const COLOR_LADDER = '0 if ({0} > 1) else (-1)';
+const VIS_LADDER = '0 if ({0} == 0) else (-1)';
+
 let service: MockPVService;
 let stub: StubSubscriber;
 
@@ -158,7 +161,7 @@ describe('rules end-to-end through a scripted subscriber', () => {
       expect.arrayContaining([
         {
           kind: 'scalar',
-          expression: '"#ff0000" if ({0} > 1) else ("#ffffff")',
+          expression: COLOR_LADDER,
           bindings: { '0': 'DEV:7:SEVR' },
         },
         {
@@ -168,42 +171,56 @@ describe('rules end-to-end through a scripted subscriber', () => {
         },
         {
           kind: 'scalar',
-          expression: 'False if ({0} == 0) else (True)',
+          expression: VIS_LADDER,
           bindings: { '0': 'DEV:7:ON' },
         },
       ])
     );
   });
 
-  it('patches a conditional rule output into the target prop (base < rule)', () => {
+  it('maps a Formula Engine path arm index onto the rule arm and patches the target prop', () => {
     renderFixture();
 
     // Base color first (no result yet).
     expect(labelBox('RB').style.color).toBe('rgb(255, 255, 255)');
 
-    stub.push('#ff0000', '#ff0000');
+    stub.push(COLOR_LADDER, 0);
     expect(labelBox('RB').style.color).toBe('rgb(255, 0, 0)');
 
-    stub.push('#ff0000', '#ffffff');
+    stub.push(COLOR_LADDER, -1);
     expect(labelBox('RB').style.color).toBe('rgb(255, 255, 255)');
   });
 
-  it('patches a formula-driven rule output into geometry (width)', () => {
+  it('passes a formula-arm scalar through unmapped into geometry (width)', () => {
     renderFixture();
 
     expect(wrapperOf('RB').style.width).toBe('100px');
+    // 250 is not an arm index; a formula-arm result IS the output.
     stub.push('{A} + {B}', 250);
     expect(wrapperOf('RB').style.width).toBe('250px');
+    // 0 would be an arm index on a ladder; here it is a plain width.
+    stub.push('{A} + {B}', 0);
+    expect(wrapperOf('RB').style.width).toBe('0px');
   });
 
   it('composes visible by AND and unmounts/remounts the widget', () => {
     renderFixture();
 
     expect(screen.queryByText('HIDEME')).toBeTruthy();
-    stub.push('False if ({0} == 0)', false);
+    stub.push(VIS_LADDER, 0);
     expect(screen.queryByText('HIDEME')).toBeNull();
-    stub.push('False if ({0} == 0)', true);
+    stub.push(VIS_LADDER, -1);
     expect(screen.queryByText('HIDEME')).toBeTruthy();
+  });
+
+  it('ignores a ladder result that is not a valid arm index', () => {
+    renderFixture();
+    stub.push(COLOR_LADDER, 0);
+    expect(labelBox('RB').style.color).toBe('rgb(255, 0, 0)');
+    stub.push(COLOR_LADDER, 7);
+    expect(labelBox('RB').style.color).toBe('rgb(255, 255, 255)');
+    stub.push(COLOR_LADDER, '#ff0000');
+    expect(labelBox('RB').style.color).toBe('rgb(255, 255, 255)');
   });
 
   it('applies static (default-only) rules without any subscriber', () => {

@@ -2,4 +2,11 @@
 
 export { generateTSX } from './generateTSX.js';
 export { createDefaultScreen } from './model.js';
-export type { ScreenModel, ScreenMeta, Widget } from './model.js';
+export type {
+  CodegenWidgetProps,
+  ColorValue,
+  CurveProps,
+  ScreenModel,
+  ScreenMeta,
+  Widget,
+} from './model.js';

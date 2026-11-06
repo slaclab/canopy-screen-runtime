@@ -25,7 +25,8 @@ const def = widgetRegistry.get('PVTextDisplay');
 ```
 
 `styles.css` also defines the `--pydm-alarm-*` / `--pydm-selection` color
-tokens the alarm helpers reference; apps may override them. Carbon's own
+tokens the alarm helpers reference; apps may override them, and the runtime
+sets the alarm tokens and `--pydm-display-background` per scheme. Carbon's own
 styles must be loaded by the app. `LineWidget` is a render-only adaptation
 (vertex editing stays in the builder).
 

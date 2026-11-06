@@ -1,14 +1,17 @@
 // Golden tests for the Rule → Formula Engine FormulaSpec compiler.
 //
 // Each case pins the EXACT compiled spec — expression string and bindings —
-// so any change to the encoding (ladder shape, literal rendering, token
-// naming, macro resolution) shows up as a diff here, reviewed on purpose.
+// so any change to the encoding (ladder shape, arm indexing, token naming,
+// macro resolution) shows up as a diff here, reviewed on purpose. A ladder
+// evaluates to an ARM INDEX (-1 = default); the raw arms ride alongside.
 
 import { describe, expect, it } from 'vitest';
-import type { FormulaDeclaration, Rule } from '@slaclab/canopy-screen-ir';
+import type { ColorRole, FormulaDeclaration, Rule } from '@slaclab/canopy-screen-ir';
 import {
   compileFormulaSpec,
   compileRule,
+  DEFAULT_ARM,
+  ladderExpression,
   RuleCompileError,
   toWireExpression,
 } from './compileRule.js';
@@ -50,13 +53,15 @@ describe('compileRule — conditional arm goldens', () => {
     });
 
     expect(compileRule(rule, [], MACROS)).toEqual({
-      kind: 'formula',
+      kind: 'ladder',
       targetProperty: 'alarmBorder',
       spec: {
         kind: 'scalar',
-        expression: 'True if ({0} > 1) else (False)',
+        expression: '0 if ({0} > 1) else (-1)',
         bindings: { '0': 'DEMO:VAC1:STATUS:SEV' },
       },
+      values: [true],
+      default: false,
     });
   });
 
@@ -76,19 +81,51 @@ describe('compileRule — conditional arm goldens', () => {
     });
 
     expect(compileRule(rule, FORMULAS, MACROS)).toEqual({
-      kind: 'formula',
+      kind: 'ladder',
       targetProperty: 'foregroundColor',
       spec: {
         kind: 'scalar',
-        expression:
-          '"#ff0000" if ({0} > 1) else ("#ffff00" if (({sum.A}+{sum.B}) > 100) else ("#ffffff"))',
+        expression: '0 if ({0} > 1) else (1 if (({sum.A}+{sum.B}) > 100) else (-1))',
         bindings: {
           '0': 'DEV:1:SEVR',
           'sum.A': 'DEV:1:VAL',
           'sum.B': 'DEV:1:OFFSET',
         },
       },
+      values: ['#ff0000', '#ffff00'],
+      default: '#ffffff',
     });
+  });
+
+  it('keeps ColorRole arms raw and by reference; the spec never sees a color', () => {
+    const major: ColorRole = { $role: 'MAJOR', fallback: '#ff0000' };
+    const text: ColorRole = { $role: 'Text', fallback: '#000000', fallbackDark: '#ffffff' };
+    const rule = conditional({
+      targetProperty: 'foregroundColor',
+      default: text,
+      pvs: [{ name: '${P}:SEVR', trigger: true }],
+      conditions: [
+        { expression: '{0} > 1', value: major },
+        { expression: '{0} > 0', value: '#ffff00' },
+      ],
+    });
+
+    const compiled = compileRule(rule, [], MACROS);
+    expect(compiled).toEqual({
+      kind: 'ladder',
+      targetProperty: 'foregroundColor',
+      spec: {
+        kind: 'scalar',
+        expression: '0 if ({0} > 1) else (1 if ({0} > 0) else (-1))',
+        bindings: { '0': 'DEV:1:SEVR' },
+      },
+      values: [major, '#ffff00'],
+      default: text,
+    });
+    if (compiled.kind !== 'ladder') throw new Error('expected a ladder');
+    expect(compiled.values[0]).toBe(major);
+    expect(compiled.default).toBe(text);
+    expect(compiled.spec.expression).not.toContain('#');
   });
 
   it('inlines a formula:// binding used against a plain pv (formula-driven r-002)', () => {
@@ -103,21 +140,23 @@ describe('compileRule — conditional arm goldens', () => {
     });
 
     expect(compileRule(rule, FORMULAS, MACROS)).toEqual({
-      kind: 'formula',
+      kind: 'ladder',
       targetProperty: 'visible',
       spec: {
         kind: 'scalar',
-        expression: 'False if (({f-001.A} + {f-001.B}) > {1}) else (True)',
+        expression: '0 if (({f-001.A} + {f-001.B}) > {1}) else (-1)',
         bindings: {
           '1': 'DEV:1:THRESHOLD',
           'f-001.A': 'DEV:1:V1',
           'f-001.B': 'DEV:1:V2',
         },
       },
+      values: [false],
+      default: true,
     });
   });
 
-  it('resolves legacy $(NAME) macros and numeric/null literals', () => {
+  it('resolves legacy $(NAME) macros and keeps numeric/null arms raw', () => {
     const rule = conditional({
       targetProperty: 'precision',
       default: null,
@@ -126,15 +165,17 @@ describe('compileRule — conditional arm goldens', () => {
     });
 
     expect(compileRule(rule, [], MACROS)).toEqual({
-      kind: 'formula',
+      kind: 'ladder',
       targetProperty: 'precision',
       spec: {
         kind: 'scalar',
         // The Formula Engine itself normalizes && to `and` (parser _BOOL_REPLACEMENTS);
         // conditions pass through verbatim.
-        expression: '3 if ({0} >= 0 && {0} < 10) else (None)',
+        expression: '0 if ({0} >= 0 && {0} < 10) else (-1)',
         bindings: { '0': 'DEV:1:RES' },
       },
+      values: [3],
+      default: null,
     });
   });
 
@@ -150,13 +191,15 @@ describe('compileRule — conditional arm goldens', () => {
     });
 
     expect(compileRule(rule, [], {})).toEqual({
-      kind: 'formula',
+      kind: 'ladder',
       targetProperty: 'text',
       spec: {
         kind: 'scalar',
-        expression: '"running" if ({0} == 1) else ("idle")',
+        expression: '0 if ({0} == 1) else (-1)',
         bindings: { '0': 'DEV:STATE' },
       },
+      values: ['running'],
+      default: 'idle',
     });
   });
 
@@ -175,18 +218,45 @@ describe('compileRule — conditional arm goldens', () => {
     });
   });
 
-  it('degenerates to static default when no condition references a live input', () => {
+  it('keeps a ColorRole default raw on the static path (resolved later, by the hook)', () => {
+    const role: ColorRole = { $role: 'MAJOR', fallback: '#ff0000' };
+    const rule = conditional({ targetProperty: 'foregroundColor', default: role });
+    const compiled = compileRule(rule, [], {});
+    expect(compiled).toEqual({ kind: 'static', targetProperty: 'foregroundColor', value: role });
+    if (compiled.kind !== 'static') throw new Error('expected static');
+    expect(compiled.value).toBe(role);
+  });
+
+  it('constant-folds to a raw ColorRole arm, not its fallback', () => {
+    const ok: ColorRole = { $role: 'OK', fallback: '#00ff00' };
+    const rule = conditional({
+      targetProperty: 'backgroundColor',
+      default: '#ffffff',
+      pvs: [],
+      conditions: [{ expression: '1 > 0', value: ok }],
+    });
+    const compiled = compileRule(rule, [], {});
+    expect(compiled).toEqual({ kind: 'static', targetProperty: 'backgroundColor', value: ok });
+    if (compiled.kind !== 'static') throw new Error('expected static');
+    expect(compiled.value).toBe(ok);
+  });
+
+  it('constant-folds a ladder with no live input to the first truthy arm', () => {
+    // No {N} token anywhere: evaluated once at compile time, no subscription.
     const rule = conditional({
       targetProperty: 'label',
       default: 'n/a',
       pvs: [],
-      conditions: [{ expression: '1 > 0', value: 'constant' }],
+      conditions: [
+        { expression: '1 < 0', value: 'never' },
+        { expression: '1 > 0', value: 'constant' },
+      ],
     });
 
     expect(compileRule(rule, [], {})).toEqual({
       kind: 'static',
       targetProperty: 'label',
-      value: 'n/a',
+      value: 'constant',
     });
   });
 
@@ -295,6 +365,38 @@ describe('compileFormulaSpec', () => {
       compileFormulaSpec({ name: 'f', expression: '{A} + {C}', bindings: { A: 'DEV:A' } }, {})
     ).toThrow(/unbound token/);
   });
+
+  it('binds the only token of a wire-form expression', () => {
+    const spec = compileFormulaSpec(
+      { name: 'f', expression: '242 - clip({g}, 0, 60)', bindings: { g: 'SR:ID:07:GAP' } },
+      {}
+    );
+    expect(spec.bindings).toEqual({ g: 'SR:ID:07:GAP' });
+  });
+
+  it('binds every token of a wire-form expression, the first included', () => {
+    const spec = compileFormulaSpec(
+      { name: 'f', expression: '{a} + {b}', bindings: { a: 'DEV:A', b: 'DEV:B' } },
+      {}
+    );
+    expect(spec.bindings).toEqual({ a: 'DEV:A', b: 'DEV:B' });
+  });
+
+  it('rejects an unbound first token of a wire-form expression', () => {
+    expect(() =>
+      compileFormulaSpec({ name: 'f', expression: '{C} + {A}', bindings: { A: 'DEV:A' } }, {})
+    ).toThrow(/unbound token\(s\): C/);
+  });
+});
+
+describe('ladderExpression', () => {
+  it('nests conditions inside-out with the default arm at the tail', () => {
+    expect(ladderExpression([])).toBe(String(DEFAULT_ARM));
+    expect(ladderExpression(['{0} > 1'])).toBe('0 if ({0} > 1) else (-1)');
+    expect(ladderExpression(['a', 'b', 'c'])).toBe(
+      '0 if (a) else (1 if (b) else (2 if (c) else (-1)))'
+    );
+  });
 });
 
 describe('toWireExpression', () => {
@@ -312,5 +414,105 @@ describe('toWireExpression', () => {
 
   it('handles multi-character keys longest-first', () => {
     expect(toWireExpression('mean(VAL, VAL2)', ['VAL', 'VAL2'])).toBe('mean({VAL}, {VAL2})');
+  });
+});
+
+describe('compileRule — macro substitution in conditions', () => {
+  const ladder = (macros: Record<string, string>) =>
+    compileRule(
+      conditional({
+        targetProperty: 'background',
+        default: 'grey',
+        pvs: [{ name: '${P}:STAT', trigger: true }],
+        conditions: [
+          { expression: '${CODE} == 1', value: 'green' },
+          { expression: '$(CODE) == 2', value: 'red' },
+        ],
+      }),
+      [],
+      macros
+    );
+
+  it('folds a macro-only ladder to the arm its macro value selects', () => {
+    expect(ladder({ P: 'DEV:1', CODE: '1' })).toEqual({
+      kind: 'static',
+      targetProperty: 'background',
+      value: 'green',
+    });
+    expect(ladder({ P: 'DEV:1', CODE: '2' })).toEqual({
+      kind: 'static',
+      targetProperty: 'background',
+      value: 'red',
+    });
+  });
+
+  it('folds a macro-only ladder to its default when no arm matches', () => {
+    expect(ladder({ P: 'DEV:1', CODE: '7' })).toEqual({
+      kind: 'static',
+      targetProperty: 'background',
+      value: 'grey',
+    });
+  });
+
+  it('folds boolean-operator spellings the Formula Engine would normalize', () => {
+    const rule = conditional({
+      targetProperty: 'visible',
+      default: false,
+      pvs: [],
+      conditions: [{ expression: '${A} == 1 && !(${B} == 1)', value: true }],
+    });
+    expect(compileRule(rule, [], { A: '1', B: '0' })).toEqual({
+      kind: 'static',
+      targetProperty: 'visible',
+      value: true,
+    });
+  });
+
+  it('substitutes macros in a mixed condition and keeps its {N} tokens live', () => {
+    const rule = conditional({
+      targetProperty: 'alarmBorder',
+      default: false,
+      pvs: [{ name: '${P}:SEV', trigger: true }],
+      conditions: [{ expression: '{0} > ${LIMIT}', value: true }],
+    });
+    expect(compileRule(rule, [], { P: 'DEV:1', LIMIT: '3' })).toEqual({
+      kind: 'ladder',
+      targetProperty: 'alarmBorder',
+      spec: {
+        kind: 'scalar',
+        expression: '0 if ({0} > 3) else (-1)',
+        bindings: { '0': 'DEV:1:SEV' },
+      },
+      values: [true],
+      default: false,
+    });
+  });
+
+  it('leaves an unresolved macro verbatim in a live condition', () => {
+    const rule = conditional({
+      targetProperty: 'alarmBorder',
+      default: false,
+      pvs: [{ name: 'DEV:SEV', trigger: true }],
+      conditions: [{ expression: '{0} > ${LIMIT}', value: true }],
+    });
+    expect(compileRule(rule, [], {})).toEqual({
+      kind: 'ladder',
+      targetProperty: 'alarmBorder',
+      spec: {
+        kind: 'scalar',
+        expression: '0 if ({0} > ${LIMIT}) else (-1)',
+        bindings: { '0': 'DEV:SEV' },
+      },
+      values: [true],
+      default: false,
+    });
+  });
+
+  it('falls to the default when a macro-only condition has an unresolved macro', () => {
+    expect(ladder({ P: 'DEV:1' })).toEqual({
+      kind: 'static',
+      targetProperty: 'background',
+      value: 'grey',
+    });
   });
 });
