@@ -30,4 +30,13 @@ describe('TEXT_ROLE / withDefaultRoles', () => {
     const other = { pv: 'A' };
     expect(withDefaultRoles('pv-label', other)).toBe(other);
   });
+
+  it('fills the Text role on a radio group and a group box, whose captions and frames show on the canvas', () => {
+    const radio: Record<string, PropertyValue> = { pv: 'A' };
+    expect(withDefaultRoles('pv-radio-group', radio).foregroundColor).toBe(TEXT_ROLE);
+    const box: Record<string, PropertyValue> = { title: 'T' };
+    expect(withDefaultRoles('group-box', box).foregroundColor).toBe(TEXT_ROLE);
+    const authored = { title: 'T', foregroundColor: '#123456' };
+    expect(withDefaultRoles('group-box', authored)).toBe(authored);
+  });
 });

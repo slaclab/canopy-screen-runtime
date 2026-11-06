@@ -155,6 +155,12 @@ describe('mapIRWidget contract', () => {
     );
   });
 
+  it('carries title and foregroundColor from group-box into Group', () => {
+    const m = mapIRWidget('group-box', { title: 'LLRF 1', foregroundColor: '#123456' });
+    expect(m?.type).toBe('Group');
+    expect(m?.props).toMatchObject({ label: 'LLRF 1', foregroundColor: '#123456' });
+  });
+
   it('puts transparent and the state images on pv-button', () => {
     const m = mapIRWidget('pv-button', {
       pv: 'X',

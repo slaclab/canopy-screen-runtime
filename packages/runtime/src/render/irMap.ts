@@ -281,7 +281,8 @@ const TYPE_MAP: Record<string, TypeMapEntry> = {
     },
     consumes: ['src', 'stretchMode'],
   },
-  // Containers degrade to Group: children + z-order survive, chrome does not.
+  // Containers degrade to Group: children + z-order survive, chrome does not,
+  // except a group-box's title and frame.
   frame: {
     type: 'Group',
     map: (_ir, p) => {
@@ -303,8 +304,9 @@ const TYPE_MAP: Record<string, TypeMapEntry> = {
     map: (ir, p) => {
       p.layoutMode = 'absolute';
       put(p, 'label', str(ir.title));
+      put(p, 'foregroundColor', str(ir.foregroundColor));
     },
-    consumes: ['title'],
+    consumes: ['title', 'foregroundColor'],
   },
   'scroll-area': {
     type: 'Group',

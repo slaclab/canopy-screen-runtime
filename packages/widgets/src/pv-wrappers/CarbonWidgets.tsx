@@ -918,9 +918,17 @@ export function CarbonPVRadioGroup({ id, layout, props, isEditing }: WidgetRende
     [isEditing, inert.inert, gated]
   );
 
+  // Captions and rings take the authored foreground (the runtime's default is
+  // the theme's Text role); unset, Carbon keeps its own colours.
+  const fg = props.foregroundColor as string | undefined;
+  const fgStyle: React.CSSProperties =
+    fg !== undefined && fg !== ''
+      ? ({ color: fg, '--cds-icon-primary': fg } as React.CSSProperties)
+      : {};
+
   return (
     <div
-      style={{ width: layout.width, height: layout.height, overflow: 'hidden' }}
+      style={{ width: layout.width, height: layout.height, overflow: 'hidden', ...fgStyle }}
       {...inert.hover}
     >
       {inert.note}

@@ -156,14 +156,21 @@ function StaticLabelWidget({ layout, props, isSelected }: WidgetRendererProps) {
   );
 }
 
-function GroupWidget({ layout, isSelected, isEditing, children }: WidgetRendererProps) {
+function GroupWidget({ layout, props, isSelected, isEditing, children }: WidgetRendererProps) {
   // The dashed outline is an EDITOR affordance. At runtime groups are
   // invisible containers (EDM semantics) — converted screens are full of
   // them, and the outlines read as authored dashed rectangles.
   const border = isEditing ? `1px dashed ${isSelected ? '#0f62fe' : '#525252'}` : 'none';
+  // A titled group (a converted group-box) is authored chrome: its frame and
+  // title are drawn in its foreground, which the runtime defaults to the
+  // theme's text colour; the legend breaks the frame without a background.
+  const title = typeof props.label === 'string' && props.label !== '' ? props.label : undefined;
+  const fg = props.foregroundColor as string | undefined;
+  const hasFg = fg !== undefined && fg !== '';
   return (
     <div
       style={{
+        position: 'relative',
         width: layout.width,
         height: layout.height,
         border,
@@ -171,6 +178,33 @@ function GroupWidget({ layout, isSelected, isEditing, children }: WidgetRenderer
         backgroundColor: 'transparent',
       }}
     >
+      {title !== undefined && (
+        <fieldset
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: 0,
+            margin: 0,
+            padding: 0,
+            minWidth: 0,
+            border: '1px solid',
+            borderColor: hasFg ? fg : 'currentColor',
+            pointerEvents: 'none',
+          }}
+        >
+          <legend
+            style={{
+              marginLeft: 6,
+              padding: '0 4px',
+              fontSize: 12,
+              lineHeight: 1,
+              ...(hasFg ? { color: fg } : {}),
+            }}
+          >
+            {title}
+          </legend>
+        </fieldset>
+      )}
       {children}
     </div>
   );

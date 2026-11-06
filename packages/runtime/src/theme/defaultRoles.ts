@@ -25,6 +25,10 @@ export const TEXT_ROLE: ColorRole = defaultRole('Text');
 /** Per IR type, the role each colour prop takes when absent. */
 const DEFAULT_ROLES: Readonly<Record<string, Readonly<Record<string, ColorRole>>>> = {
   'text-label': { foregroundColor: TEXT_ROLE },
+  // Captions and frames sit on the canvas, so they take the theme's text colour,
+  // not the widget library's.
+  'pv-radio-group': { foregroundColor: TEXT_ROLE },
+  'group-box': { foregroundColor: TEXT_ROLE },
 };
 
 /**

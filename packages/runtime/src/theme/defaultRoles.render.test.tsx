@@ -108,3 +108,17 @@ describe('an unset text-label colour in the renderer', () => {
     expect(labelColor('authored')).toBe('var(--cr-0, #00ff00)');
   });
 });
+
+describe('an unset group-box colour in the renderer', () => {
+  it('draws the title in the Text role', () => {
+    const box: WidgetNode = {
+      id: 'g',
+      type: 'group-box',
+      props: { title: 'High-level Displays' },
+      geometry: { x: 0, y: 0, width: 100, height: 40 },
+      children: [],
+    };
+    render(wrap(<ScreenRenderer screen={doc([box])} />));
+    expect(labelColor('High-level Displays')).toBe(`var(--cr-${TEXT}, ${LIGHT})`);
+  });
+});

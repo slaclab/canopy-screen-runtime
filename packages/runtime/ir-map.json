@@ -54,7 +54,8 @@
   },
   "group-box": {
     "consumes": [
-      "title"
+      "title",
+      "foregroundColor"
     ],
     "verbatim": false,
     "displayName": "Group Box",
