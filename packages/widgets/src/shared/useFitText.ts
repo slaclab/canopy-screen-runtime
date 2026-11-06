@@ -49,10 +49,28 @@ export interface UseFitTextResult<T extends HTMLElement> {
 }
 
 /**
+ * The box text must fit inside: the content box of the text element's parent.
+ * The element's own box is no reference: a flex item sized to its text has a
+ * client box equal to its content, and with a line-height at or below the
+ * glyph extent its scrollHeight exceeds its clientHeight at every size, which
+ * reads as overflow on every pass.
+ */
+function fitBox(el: HTMLElement): { width: number; height: number } {
+  const box = el.parentElement;
+  if (!box) return { width: el.clientWidth, height: el.clientHeight };
+  const style = getComputedStyle(box);
+  const px = (v: string) => parseFloat(v) || 0;
+  return {
+    width: box.clientWidth - px(style.paddingLeft) - px(style.paddingRight),
+    height: box.clientHeight - px(style.paddingTop) - px(style.paddingBottom),
+  };
+}
+
+/**
  * Shrink-to-fit hook. Returns a ref to attach to the text element and the
  * computed font-size to apply. Starts from `maxFontSize` and steps the size
  * down (via `computeFitFontSize`) until the element's content fits inside its
- * own box or hits the floor.
+ * parent's content box or hits the floor.
  *
  * `deps` should include anything that changes the rendered text (label, value)
  * so the fit is recomputed. Box-size changes are picked up automatically via a
@@ -77,14 +95,15 @@ export function useFitText<T extends HTMLElement>(
     // Iterate from the max downward each pass so growing the box (or shorter
     // text) can recover a larger size. Bounded by the integer font range.
     let size = maxFontSize;
+    const box = fitBox(el);
     for (let i = 0; i < maxFontSize; i++) {
       el.style.fontSize = `${size}px`;
       const next = computeFitFontSize({
         current: size,
         scrollWidth: el.scrollWidth,
         scrollHeight: el.scrollHeight,
-        clientWidth: el.clientWidth,
-        clientHeight: el.clientHeight,
+        clientWidth: box.width,
+        clientHeight: box.height,
         min,
       });
       if (next === size) break;
@@ -102,6 +121,7 @@ export function useFitText<T extends HTMLElement>(
     if (typeof ResizeObserver === 'undefined') return;
     const ro = new ResizeObserver(() => measure());
     ro.observe(el);
+    if (el.parentElement) ro.observe(el.parentElement);
     return () => ro.disconnect();
     // measure depends on maxFontSize/min; `deps` carries text changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
