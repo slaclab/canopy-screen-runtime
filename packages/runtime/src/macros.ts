@@ -67,18 +67,43 @@ export function substituteProps(props: Props, macros: MacroValues): Record<strin
   return out;
 }
 
+/** Upper bound on default-substitution passes in `resolveScreenMacros`. */
+const MAX_DEFAULT_PASSES = 5;
+
 /**
  * The effective macro set for a screen: the screen's declared defaults,
  * overridden by caller-provided values (viewer query params, an embedding
  * parent, tests). Callers may also pass macros the screen never declared —
  * they flow through so deep embedding chains work like EPICS macro passing.
+ * Declared defaults may reference other macros and are resolved to a fixpoint.
  */
 export function resolveScreenMacros(screen: ScreenJSON, provided: MacroValues = {}): MacroValues {
   const merged: Record<string, string> = {};
+  // Defaults that the caller did not override; only these are substituted —
+  // caller-provided values are taken verbatim.
+  const defaulted: string[] = [];
   for (const decl of screen.macros) {
-    if (decl.default !== undefined) merged[decl.name] = decl.default;
+    if (decl.default === undefined) continue;
+    merged[decl.name] = decl.default;
+    if (!Object.hasOwn(provided, decl.name)) defaulted.push(decl.name);
   }
   Object.assign(merged, provided);
+  // A default may reference a provided macro (`P=${HOST}`) or another default
+  // declared in any order (`A=${B}`, `B=1`). Substitute repeatedly against the
+  // whole effective set until nothing changes, capped at MAX_DEFAULT_PASSES.
+  // Unresolved references stay verbatim, so cycles (`A=${A}`) terminate.
+  for (let pass = 0; pass < MAX_DEFAULT_PASSES; pass++) {
+    let changed = false;
+    for (const name of defaulted) {
+      const current = merged[name] ?? '';
+      const next = substituteMacros(current, merged);
+      if (next !== current) {
+        merged[name] = next;
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
   return merged;
 }
 

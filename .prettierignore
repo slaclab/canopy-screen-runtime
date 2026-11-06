@@ -14,3 +14,7 @@ build
 
 # Generated files
 src/routeTree.gen.ts
+
+# Byte-pinned expand() vectors, written by packages/runtime/src/render/expandVectors.test.ts (regenerate with vitest -u)
+packages/runtime/src/render/__fixtures__/expand-cases.json
+packages/runtime/src/render/__fixtures__/expand-vectors.json

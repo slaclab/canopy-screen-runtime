@@ -87,6 +87,77 @@ describe('resolveScreenMacros', () => {
       EXTRA: 'x',
     });
   });
+
+  function screenDeclaring(macros: ScreenJSON['macros']): ScreenJSON {
+    return { ...screenWithMacros(), macros };
+  }
+
+  it('resolves a default that references a caller-provided macro', () => {
+    const screen = screenDeclaring([{ name: 'P', default: '${HOST}' }]);
+    expect(resolveScreenMacros(screen, { HOST: 'LFB' })).toEqual({ P: 'LFB', HOST: 'LFB' });
+  });
+
+  it('resolves a default that references a later-declared default', () => {
+    const screen = screenDeclaring([
+      { name: 'A', default: '${B}' },
+      { name: 'B', default: '1' },
+    ]);
+    expect(resolveScreenMacros(screen)).toEqual({ A: '1', B: '1' });
+  });
+
+  it('resolves chains of defaults regardless of declaration order', () => {
+    const screen = screenDeclaring([
+      { name: 'A', default: '${B}:A' },
+      { name: 'B', default: '$(C):B' },
+      { name: 'C', default: '${HOST}' },
+    ]);
+    expect(resolveScreenMacros(screen, { HOST: 'H' })).toEqual({
+      A: 'H:B:A',
+      B: 'H:B',
+      C: 'H',
+      HOST: 'H',
+    });
+  });
+
+  it('terminates on a self-reference, leaving it verbatim', () => {
+    const screen = screenDeclaring([{ name: 'A', default: '${A}' }]);
+    expect(resolveScreenMacros(screen)).toEqual({ A: '${A}' });
+  });
+
+  it('terminates on a mutual cycle', () => {
+    const screen = screenDeclaring([
+      { name: 'A', default: '${B}x' },
+      { name: 'B', default: '${A}y' },
+    ]);
+    const out = resolveScreenMacros(screen);
+    expect(Object.keys(out).sort()).toEqual(['A', 'B']);
+    expect(hasMacro(out.A ?? '')).toBe(true);
+    expect(hasMacro(out.B ?? '')).toBe(true);
+  });
+
+  it('leaves unresolved references in defaults verbatim', () => {
+    const screen = screenDeclaring([{ name: 'P', default: '${MISSING}:X' }]);
+    expect(resolveScreenMacros(screen)).toEqual({ P: '${MISSING}:X' });
+  });
+
+  it('does not substitute inside caller-provided values', () => {
+    const screen = screenDeclaring([{ name: 'B', default: 'b' }]);
+    expect(resolveScreenMacros(screen, { A: '${B}' })).toEqual({ A: '${B}', B: 'b' });
+  });
+
+  it('a hardIOCs-shaped parent embedding _host with HOST=LFB yields P=LFB', () => {
+    // Parent screen (hardIOCs-shaped) embeds the `_host` sub-screen with
+    // macros { HOST: "LFB" }; `_host` declares P defaulting to ${HOST}.
+    const parent = screenDeclaring([]);
+    const host = screenDeclaring([
+      { name: 'P', default: '${HOST}' },
+      { name: 'HOST', default: 'UNSET' },
+    ]);
+    const parentMacros = resolveScreenMacros(parent);
+    const hostMacros = resolveScreenMacros(host, childMacros(parentMacros, { HOST: 'LFB' }));
+    expect(hostMacros.P).toBe('LFB');
+    expect(hostMacros.HOST).toBe('LFB');
+  });
 });
 
 describe('childMacros', () => {
