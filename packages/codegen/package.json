@@ -32,7 +32,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@slaclab/canopy-screen-ir": "^0.3.0",
+    "@slaclab/canopy-screen-ir": "^0.3.1-als.1",
     "@slaclab/canopy-screen-widgets": "workspace:^"
   },
   "devDependencies": {

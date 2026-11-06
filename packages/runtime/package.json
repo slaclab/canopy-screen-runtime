@@ -9,13 +9,20 @@
     "directory": "packages/runtime"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "registry": "https://npm.pkg.github.com",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    }
   },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "canopy-source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
@@ -32,17 +39,18 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@slaclab/canopy-screen-ir": "^0.3.0",
+    "@slaclab/canopy-screen-ir": "^0.3.1-als.1",
     "@slaclab/canopy-screen-widgets": "workspace:^"
   },
   "peerDependencies": {
+    "@slaclab/canopy-react": "^0.3.1-als.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@carbon/react": "^1.108.0",
-    "@slaclab/canopy-client": "^0.3.0",
-    "@slaclab/canopy-react": "^0.3.0",
+    "@slaclab/canopy-client": "^0.3.1-als.1",
+    "@slaclab/canopy-react": "^0.3.1-als.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.14",

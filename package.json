@@ -7,14 +7,14 @@
   "scripts": {
     "build": "pnpm -r run build",
     "dev": "pnpm --filter viewer dev",
-    "test": "pnpm run build && pnpm -r run test",
+    "test": "pnpm -r run test",
     "test:watch": "pnpm -r --parallel run test:watch",
-    "test:coverage": "pnpm run build && pnpm -r run test:coverage",
-    "typecheck": "pnpm run build && pnpm -r run typecheck",
+    "test:coverage": "pnpm -r run test:coverage",
+    "typecheck": "pnpm -r run typecheck",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "format": "prettier --write \"packages/*/src/**/*.{ts,tsx,css}\" \"packages/*/*.{md,css}\" \"apps/*/src/**/*.{ts,tsx,css}\" \"apps/*/*.md\"",
-    "format:check": "prettier --check \"packages/*/src/**/*.{ts,tsx,css}\" \"packages/*/*.{md,css}\" \"apps/*/src/**/*.{ts,tsx,css}\" \"apps/*/*.md\"",
+    "format": "prettier --write \"packages/*/src/**/*.{ts,tsx,css}\" \"packages/*/*.{md,css}\" \"apps/*/src/**/*.{ts,tsx,css}\" \"apps/*/*.md\" \"tooling/src/**/*.ts\"",
+    "format:check": "prettier --check \"packages/*/src/**/*.{ts,tsx,css}\" \"packages/*/*.{md,css}\" \"apps/*/src/**/*.{ts,tsx,css}\" \"apps/*/*.md\" \"tooling/src/**/*.ts\"",
     "prepare": "husky"
   },
   "devDependencies": {

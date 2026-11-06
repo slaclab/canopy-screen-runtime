@@ -9,13 +9,21 @@
     "directory": "packages/widgets"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "registry": "https://npm.pkg.github.com",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./styles.css": "./styles.css"
+    }
   },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "canopy-source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
@@ -36,8 +44,9 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@slaclab/canopy-client": "^0.3.0",
-    "@slaclab/canopy-react": "^0.3.0",
+    "@slaclab/canopy-client": "^0.3.1-als.1",
+    "@slaclab/canopy-react": "^0.3.1-als.1",
+    "@slaclab/canopy-shell": "^0.3.1-als.1",
     "echarts": "^6.1.0",
     "echarts-for-react": "^3.0.6"
   },

@@ -13,11 +13,14 @@ from [Canopy](https://github.com/slaclab/Canopy) through the
 
 | Package                                              | Purpose                                                                                                               |
 | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| [`@slaclab/canopy-screen-ir`](packages/screen-ir)    | Canonical Screen IR — types, JSON Schema, `validate()` (ported verbatim from the builder; frozen contract)            |
 | [`@slaclab/canopy-screen-widgets`](packages/widgets) | Carbon PV widgets, drawing primitives, and the widget registry shared by builder and runtime                          |
 | [`@slaclab/canopy-screen-runtime`](packages/runtime) | `ScreenRenderer` — macros, embedded screens, per-widget containment, and widget rules compiled for the Formula Engine |
 | [`@slaclab/canopy-screen-codegen`](packages/codegen) | `generateTSX` — ejectable React code from screen models (generation direction only)                                   |
 | [`viewer`](apps/viewer)                              | **Canopy Screens** — browse `/` and deep-link `/s/:category/:id?MACRO=value` over canopy-screens content              |
+
+The Screen IR contract, `@slaclab/canopy-screen-ir`, and the client, React and
+shell packages are [canopy-sdk-js](https://github.com/slaclab/canopy-sdk-js)
+packages (see **SDK dependencies** below).
 
 ## Development
 
@@ -26,12 +29,19 @@ Requires [pnpm](https://pnpm.io) (see `packageManager` in package.json).
 ```bash
 pnpm install        # see the TEMPORARY overrides note below
 pnpm build          # tsc builds every package, vite builds the viewer
-pnpm test           # build + vitest across the workspace
+pnpm test           # vitest across the workspace
 pnpm lint           # eslint
 pnpm format:check   # prettier
-pnpm typecheck      # build + tsc --noEmit everywhere (includes tests)
+pnpm typecheck      # tsc --noEmit everywhere (includes tests)
 pnpm dev            # = pnpm --filter viewer dev
 ```
+
+Packages of this workspace read each other from source: `@slaclab/canopy-screen-widgets`
+and `@slaclab/canopy-screen-runtime` name their entry under the `canopy-source` export
+condition, and the tests, the type check, the dev server and the viewer's bundle ask
+for it. `pnpm build` produces what ships — the package tarballs and the viewer bundle
+the browser tests serve — and nothing else depends on it, so an edit in one package
+is seen by every sibling at once.
 
 The viewer's [README](apps/viewer/README.md) documents pointing
 `VITE_SCREENS_BASE_URL` at a locally served canopy-screens checkout for the

@@ -1,6 +1,7 @@
 packages:
   - packages/*
   - apps/*
+  - tooling
 
 # Dependency postinstall scripts we deliberately do not run: the Carbon and
 # IBM Plex packages' scripts are ibmtelemetry hooks, and @parcel/watcher's

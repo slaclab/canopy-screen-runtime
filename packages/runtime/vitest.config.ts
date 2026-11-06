@@ -1,10 +1,12 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  // The @slaclab SDK packages are TEMPORARILY link:ed from a sibling checkout
-  // (see pnpm-workspace.yaml); dedupe keeps them on this repo's single React
-  // copy instead of the SDK checkout's own.
   resolve: {
+    // Sibling workspace packages are read from their source (the `canopy-source`
+    // export condition); Vitest appends its own node conditions after it.
+    conditions: ['canopy-source'],
+    // One React for every module a test loads: react and react-dom resolve
+    // from this package wherever they are imported.
     dedupe: ['react', 'react-dom'],
   },
   test: {

@@ -36,7 +36,7 @@
 // BEFORE subscribing, per the IR contract ("resolved client-side before
 // subscribing to the Formula Engine").
 
-import type { FormulaDeclaration, MacroValues, Rule } from '@slaclab/canopy-screen-ir';
+import type { FormulaDeclaration, MacroValues, Rule, RuleValue } from '@slaclab/canopy-screen-ir';
 import type { FormulaSpec } from '../formula.js';
 import { formulaName, isFormulaRef } from '../formulaRef.js';
 import { substituteMacros } from '../macros.js';
@@ -57,6 +57,19 @@ export class RuleCompileError extends Error {
 }
 
 const TOKEN_RE = /\{([^{}]+)\}/g;
+
+/**
+ * A rule value as a scalar. Color-role values (Screen IR 1.1) need the
+ * scheme-aware rule evaluation, which this compiler does not do yet.
+ */
+function scalar(value: RuleValue): RuleScalar {
+  if (value !== null && typeof value === 'object') {
+    throw new RuleCompileError(
+      `color-role rule values are not supported: ${JSON.stringify(value)}`
+    );
+  }
+  return value;
+}
 
 /** Render a rule scalar as a Formula Engine (Python) literal. */
 function pyLiteral(value: RuleScalar): string {
@@ -197,7 +210,7 @@ export function compileRule(
   }
 
   if (rule.conditions.length === 0) {
-    return { kind: 'static', targetProperty, value: rule.default };
+    return { kind: 'static', targetProperty, value: scalar(rule.default) };
   }
 
   // Prepare each PV binding: plain PVs bind under their `{N}` index token
@@ -237,11 +250,11 @@ export function compileRule(
 
   // Build the ladder inside-out: default at the tail, then each condition
   // from last to first so evaluation order is top-to-bottom, first wins.
-  let expression = pyLiteral(rule.default);
+  let expression = pyLiteral(scalar(rule.default));
   for (let i = rule.conditions.length - 1; i >= 0; i--) {
     const condition = rule.conditions[i]!;
     const rewritten = rewriteCondition(condition.expression);
-    expression = `${pyLiteral(condition.value)} if (${rewritten}) else (${expression})`;
+    expression = `${pyLiteral(scalar(condition.value))} if (${rewritten}) else (${expression})`;
   }
 
   // Merge inlined formula channel bindings, then drop anything unused
@@ -255,7 +268,7 @@ export function compileRule(
   if (Object.keys(finalBindings).length === 0) {
     // Conditions with no live inputs can never re-evaluate; the contract
     // ("first truthy expression wins, else default") degenerates to default.
-    return { kind: 'static', targetProperty, value: rule.default };
+    return { kind: 'static', targetProperty, value: scalar(rule.default) };
   }
 
   return {
