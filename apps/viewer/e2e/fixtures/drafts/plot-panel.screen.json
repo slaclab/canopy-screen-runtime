@@ -1,0 +1,105 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "plot-panel",
+  "metadata": {
+    "title": "Plot Panel",
+    "source": {
+      "type": "screen-builder",
+      "savedAt": "2026-10-01T00:00:00Z"
+    },
+    "size": {
+      "width": 420,
+      "height": 200
+    }
+  },
+  "macros": [],
+  "root": {
+    "id": "w-root",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 420,
+      "height": 200
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 420,
+      "height": 200
+    },
+    "children": [
+      {
+        "id": "p-i",
+        "type": "pv-label",
+        "props": {
+          "pv": "E2E:PLOT:CURRENT",
+          "precision": "fromPV"
+        },
+        "geometry": {
+          "x": 10,
+          "y": 10,
+          "width": 180,
+          "height": 30
+        }
+      },
+      {
+        "id": "p-set",
+        "type": "pv-text-input",
+        "props": {
+          "pv": "E2E:PLOT:SETPOINT"
+        },
+        "geometry": {
+          "x": 10,
+          "y": 45,
+          "width": 180,
+          "height": 30
+        }
+      },
+      {
+        "id": "p-loc",
+        "type": "pv-label",
+        "props": {
+          "pv": "loc://e2e_local"
+        },
+        "geometry": {
+          "x": 10,
+          "y": 80,
+          "width": 180,
+          "height": 30
+        }
+      },
+      {
+        "id": "p-e1",
+        "type": "embedded-display",
+        "props": {
+          "file": "embedded/_bpm.screen.json",
+          "macros": {
+            "BPM": "E2E:BPM1"
+          }
+        },
+        "geometry": {
+          "x": 200,
+          "y": 10,
+          "width": 200,
+          "height": 70
+        }
+      },
+      {
+        "id": "p-e2",
+        "type": "embedded-display",
+        "props": {
+          "file": "embedded/_bpm.screen.json",
+          "macros": {
+            "BPM": "E2E:BPM2"
+          }
+        },
+        "geometry": {
+          "x": 200,
+          "y": 90,
+          "width": 200,
+          "height": 70
+        }
+      }
+    ]
+  }
+}

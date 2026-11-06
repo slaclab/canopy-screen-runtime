@@ -1,0 +1,116 @@
+{
+  "schemaVersion": "1.1",
+  "kind": "screen",
+  "id": "sub-b",
+  "metadata": {
+    "title": "Synthetic sub-b",
+    "source": {
+      "type": "hand-authored"
+    },
+    "size": {
+      "width": 150,
+      "height": 60
+    }
+  },
+  "macros": [
+    {
+      "name": "D",
+      "default": "SYN:D000"
+    }
+  ],
+  "root": {
+    "id": "sub-b-root",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 150,
+      "height": 60
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 150,
+      "height": 60
+    },
+    "children": [
+      {
+        "id": "sub-b-frame",
+        "type": "rectangle",
+        "props": {
+          "lineColor": {
+            "$role": "On",
+            "fallback": "#f34186",
+            "fallbackDark": "#8c82e5"
+          },
+          "lineWidth": 1,
+          "fill": false
+        },
+        "geometry": {
+          "x": 0,
+          "y": 0,
+          "width": 150,
+          "height": 60
+        }
+      },
+      {
+        "id": "sub-b-value",
+        "type": "pv-label",
+        "props": {
+          "pv": "${D}:VAL",
+          "foregroundColor": {
+            "$role": "Text",
+            "fallback": "#a567c9",
+            "fallbackDark": "#c48726"
+          }
+        },
+        "geometry": {
+          "x": 4,
+          "y": 4,
+          "width": 100,
+          "height": 22
+        }
+      },
+      {
+        "id": "sub-b-led",
+        "type": "pv-led",
+        "props": {
+          "pv": "${D}:STAT",
+          "onColor": {
+            "$role": "On",
+            "fallback": "#1ab53e",
+            "fallbackDark": "#c7dc7e"
+          },
+          "offColor": {
+            "$role": "Grid",
+            "fallback": "#459adb",
+            "fallbackDark": "#bc5491"
+          }
+        },
+        "geometry": {
+          "x": 110,
+          "y": 4,
+          "width": 22,
+          "height": 22
+        }
+      },
+      {
+        "id": "sub-b-tag",
+        "type": "text-label",
+        "props": {
+          "text": "SUB-B",
+          "foregroundColor": {
+            "$role": "Text",
+            "fallback": "#a22a54",
+            "fallbackDark": "#cac717"
+          },
+          "fontSize": 11
+        },
+        "geometry": {
+          "x": 4,
+          "y": 32,
+          "width": 140,
+          "height": 20
+        }
+      }
+    ]
+  }
+}

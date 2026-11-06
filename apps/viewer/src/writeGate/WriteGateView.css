@@ -1,0 +1,22 @@
+/* The write dialog's table of pending writes: PV names and values in mono. */
+.canopy-write-dialog__writes td {
+  padding: 0 12px;
+  font-family: var(--canopy-font-mono);
+  font-size: var(--canopy-text-sm);
+}
+
+/* One screen's toasts in the workspace's shared column (toastHost.tsx). */
+.canopy-write-toasts__screen {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+/* The screen's tab title above each toast in the shared column. */
+.canopy-write-toast__screen {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "_bpm",
+  "metadata": {
+    "title": "BPM",
+    "source": {
+      "type": "screen-builder",
+      "savedAt": "2026-10-01T00:00:00Z"
+    },
+    "size": {
+      "width": 200,
+      "height": 70
+    }
+  },
+  "macros": [],
+  "root": {
+    "id": "w-root",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 200,
+      "height": 70
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 200,
+      "height": 70
+    },
+    "children": [
+      {
+        "id": "b-x",
+        "type": "pv-label",
+        "props": {
+          "pv": "${BPM}:X",
+          "precision": "fromPV"
+        },
+        "geometry": {
+          "x": 5,
+          "y": 5,
+          "width": 150,
+          "height": 25
+        }
+      },
+      {
+        "id": "b-y",
+        "type": "pv-label",
+        "props": {
+          "pv": "${BPM}:Y",
+          "precision": "fromPV"
+        },
+        "geometry": {
+          "x": 5,
+          "y": 35,
+          "width": 150,
+          "height": 25
+        }
+      },
+      {
+        "id": "b-ok",
+        "type": "pv-led",
+        "props": {
+          "pv": "${BPM}:OK"
+        },
+        "geometry": {
+          "x": 160,
+          "y": 5,
+          "width": 20,
+          "height": 20
+        }
+      }
+    ]
+  }
+}

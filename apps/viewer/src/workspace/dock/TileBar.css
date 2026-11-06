@@ -1,0 +1,217 @@
+/* The tile bar and its right-hand actions. Every selector is anchored on
+   the bar's own classes: the browser clones a dragged tab for the drag ghost, so a rule
+   scoped under the dock root would not reach it. No rule targets dockview's own elements
+   (the adapter hides dockview's tabs with inline styles). Nothing here floats or makes a
+   stacking context.
+
+   Sharing the header row: dockview's prefix and right containers shrink in proportion to
+   their content, so a wide screen header would push the actions over the tabs and the ☰ out
+   of the tile. TileBar.tsx measures the row and sets two caps on our own elements:
+   --canopy-tile-actions-cap (what the tab list leaves; the tab list comes first) and
+   --canopy-tile-bar-cap (what the actions leave). Without them (before the first measure)
+   both are uncapped. */
+
+.canopy-tile-bar {
+  display: flex;
+  align-items: stretch;
+  flex: 1 1 auto;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: var(--canopy-tile-bar-cap, none);
+  min-height: 1.75rem;
+  padding: 0 0.25rem 0 0;
+  background: var(--canopy-bg-panel);
+  color: var(--canopy-text-secondary);
+  border-bottom: 1px solid var(--canopy-border);
+  border-top: 2px solid transparent;
+  font-size: var(--canopy-text-sm);
+  overflow: hidden;
+  user-select: none;
+}
+
+.canopy-tile-bar:focus-visible {
+  outline: 2px solid var(--canopy-focus);
+  outline-offset: -2px;
+}
+
+/* Painted only while focused, two or more tiles are open and the document has focus. */
+.canopy-tile-bar--focused {
+  color: var(--canopy-text-primary);
+  border-top-color: var(--canopy-accent);
+}
+
+/* The tile's drag handle, always present at the bar's left edge. */
+.canopy-tile-bar__grip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  color: var(--canopy-text-secondary);
+  cursor: grab;
+}
+
+/* The tab list takes the rest of the bar and scrolls sideways when its tabs do not fit (the
+   script keeps the showing tab and its × in view, and turns a vertical wheel sideways). */
+.canopy-tile-bar__tabs {
+  display: flex;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.canopy-tile-bar__tabs::-webkit-scrollbar {
+  display: none;
+}
+
+/* A tab keeps its width, 96 to 220 px (its title ellipsizes, never down to one letter): the
+   list scrolls rather than squeezing every title. No tab is wider than the list, so in a
+   narrow tile the showing tab, its middle and its × all fit in view at once. */
+.canopy-tile-bar__tab {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex: none;
+  box-sizing: border-box;
+  min-width: 6rem;
+  max-width: min(13.75rem, 100%);
+  padding: 0 0.25rem 0 0.5rem;
+  border-right: 1px solid var(--canopy-border);
+  cursor: grab;
+}
+
+.canopy-tile-bar__tab:hover {
+  color: var(--canopy-text-primary);
+}
+
+.canopy-tile-bar__tab--showing {
+  color: var(--canopy-text-primary);
+  background: var(--canopy-accent-tint);
+}
+
+.canopy-tile-bar__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.canopy-tile-bar__close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border: none;
+  border-radius: var(--canopy-radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.canopy-tile-bar__close:hover {
+  background: var(--canopy-accent-tint);
+  color: var(--canopy-text-primary);
+}
+
+/* The right header actions: the showing tab's controls, then the window menu slot. They are
+   as tall as a screen header (Carbon's 3rem) plus the bottom border whatever they hold, so a
+   tile's header keeps its height when its showing tab changes between a screen, a tool and
+   nothing, and the content below it never moves under the pointer. */
+.canopy-tile-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  box-sizing: border-box;
+  height: 100%;
+  min-height: calc(3rem + 1px);
+  min-width: 0;
+  max-width: var(--canopy-tile-actions-cap, none);
+  padding: 0 0.25rem;
+  background: var(--canopy-bg-panel);
+  border-bottom: 1px solid var(--canopy-border);
+  overflow: hidden;
+}
+
+/* A screen header is given the whole lane the tab list leaves: it collapses within that lane,
+   and content-sized it would shrink the lane as it collapsed and never see room to grow. */
+.canopy-tile-bar__actions:has(.screen-header--tile) {
+  width: var(--canopy-tile-actions-cap, auto);
+}
+
+/* Clamped (D-3): a zero basis keeps the header's own width out of the actions' min-content;
+   the header's content shrinks (the screen title ellipsizes) and the rest is clipped. */
+.canopy-tile-bar__header {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* In a tile the tab names the screen: the header shows no "SCREEN" label. */
+.canopy-tile-bar__header .canopy-header__name {
+  display: none;
+}
+
+/* A tile's header packs its control groups a little closer than a standalone one. */
+.canopy-tile-bar__header .screen-header__history {
+  padding-right: 0.5rem;
+}
+
+.canopy-tile-bar__header .screen-header__zoom {
+  padding-right: 0.25rem;
+}
+
+/* The tile's "More controls" button is as wide as its ☰, not Carbon's 3rem header action,
+   and the compact zoom button is 4.5rem: TILE_HEADER_FIT (TileBar.tsx) counts them at these
+   widths. */
+.canopy-tile-bar__header .screen-header__more {
+  width: 2rem;
+  min-width: 2rem;
+  inline-size: 2rem;
+}
+
+/* A tile's header buttons (the actions, "⋯") centre their icons on the row, level with ◀ ▶ and
+   the zoom group. */
+.canopy-tile-bar__header .cds--header__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.canopy-tile-bar__header .screen-header__zoom-menu {
+  flex: none;
+  box-sizing: border-box;
+  width: 4.5rem;
+  min-width: 4.5rem;
+}
+
+.canopy-tile-bar__menu {
+  flex: none;
+}
+
+/* A screen header here is Carbon's Header, whose z-index (8000) would lift it over the sash
+   of the split above the tile and leave that sash ungrabbable over the header's width. In a
+   tile it is an inline row: no stacking level of its own, so the dock's sashes stay on top. */
+.canopy-tile-bar__header .cds--header {
+  z-index: auto;
+}
+
+/* A tool's Save view outcome beside its button: one line, ellipsized, which may break
+   anywhere. Unbroken it would be the actions' minimum width (its whole text), so in a
+   narrow tile the actions would overflow the tile and push the button out of it; this way
+   the outcome gives way and the button stays inside the tile. */
+.canopy-tile-bar__header .save-view__status:not(:empty) {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

@@ -1,0 +1,66 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "wide-panel",
+  "metadata": {
+    "title": "Wide Panel",
+    "source": {
+      "type": "screen-builder",
+      "savedAt": "2026-09-30T00:00:00Z"
+    },
+    "size": {
+      "width": 2400,
+      "height": 800
+    }
+  },
+  "macros": [],
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 2400,
+      "height": 800
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 2400,
+      "height": 800
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "text-label",
+        "props": {
+          "text": "Left edge"
+        },
+        "geometry": {
+          "x": 10,
+          "y": 10,
+          "width": 200,
+          "height": 30
+        }
+      },
+      {
+        "id": "w-003",
+        "type": "regular-button",
+        "props": {
+          "label": "Open E2E Panel",
+          "actions": [
+            {
+              "type": "open_display",
+              "file": "e2e-panel.screen.json",
+              "target": "replace"
+            }
+          ]
+        },
+        "geometry": {
+          "x": 2150,
+          "y": 700,
+          "width": 200,
+          "height": 60
+        }
+      }
+    ]
+  }
+}

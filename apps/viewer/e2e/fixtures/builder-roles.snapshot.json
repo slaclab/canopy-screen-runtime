@@ -1,0 +1,8 @@
+{
+  "timestamp": 1700000000,
+  "pvs": {
+    "DEV:RB": { "value": 12.5, "connected": true },
+    "DEV:SEVR": { "value": 2, "connected": true },
+    "DEV:STATE": { "value": 1, "connected": true }
+  }
+}

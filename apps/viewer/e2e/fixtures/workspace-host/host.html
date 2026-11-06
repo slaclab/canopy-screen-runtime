@@ -1,0 +1,49 @@
+<!doctype html>
+<!--
+  A stand-in host page for workspace-live.e2e.ts: the viewer workspace in an
+  iframe beside a host-owned textarea, as a host embeds the CANOPY panel. The
+  spec serves it from the viewer's own origin (page.route), so the viewer can
+  reach this top window and claim the workspace slot when it gains focus.
+  ?frame=<path> is the iframe's src (default /embed/). "Hide panel" sets
+  display:none on the frame, as a host hides a tile while keeping its frame
+  loaded; "Collapse panel" sizes the frame 0 x 0; "Show panel" undoes both.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Workspace host</title>
+    <style>
+      html, body { margin: 0; height: 100%; font: 14px sans-serif; }
+      body { display: grid; grid-template-rows: auto 1fr; }
+      header { display: flex; gap: 8px; align-items: center; padding: 6px; }
+      textarea { width: 240px; height: 28px; }
+      iframe { width: 100%; height: 100%; border: 0; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <label>Host notes <textarea data-testid="host-notes"></textarea></label>
+      <button type="button" data-testid="host-hide">Hide panel</button>
+      <button type="button" data-testid="host-collapse">Collapse panel</button>
+      <button type="button" data-testid="host-show">Show panel</button>
+    </header>
+    <iframe data-testid="host-frame" title="CANOPY"></iframe>
+    <script>
+      const frame = document.querySelector('iframe');
+      const src = new URLSearchParams(location.search).get('frame') || '/embed/';
+      frame.src = new URL(src, document.baseURI).href;
+      document.querySelector('[data-testid="host-hide"]').onclick = () => {
+        frame.style.display = 'none';
+      };
+      document.querySelector('[data-testid="host-collapse"]').onclick = () => {
+        frame.style.width = '0';
+        frame.style.height = '0';
+      };
+      document.querySelector('[data-testid="host-show"]').onclick = () => {
+        frame.style.display = '';
+        frame.style.width = '';
+        frame.style.height = '';
+      };
+    </script>
+  </body>
+</html>

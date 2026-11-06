@@ -1,0 +1,81 @@
+/* The dock's one theme. dockview-core 7.0.2 puts the theme's className on its
+   shell, and its stylesheet reads these --dv-* variables outside its built-in
+   theme blocks; each is mapped to a bare host contract token, or switched off
+   with transparent/none. A var() that substitutes `none` into a non-colour
+   property makes it fall back to its initial value: durations become 0s,
+   opacity 1, heights auto, margins and padding 0, z-index auto. dockview never
+   paints a drop target (the bridge prevents every overlay; DropPreview paints
+   the preview, styled in dock.css), so its drop-target variables are off and
+   no rule paces its anchor.
+
+   Nothing here sets z-index, transform, contain, filter or isolation on the dock
+   root, and no rule targets dockview's tab container: the overlay's stacking
+   contract and the tile bar depend on both. */
+
+.canopy-dock {
+  /* Surfaces */
+  --dv-group-view-background-color: var(--canopy-bg-panel);
+  --dv-tabs-and-actions-container-background-color: var(--canopy-bg-panel);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--canopy-bg-panel);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--canopy-bg-panel);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--canopy-bg-panel);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--canopy-bg-panel);
+  --dv-context-menu-background-color: var(--canopy-bg-panel);
+  --dv-floating-titlebar-background-color: var(--canopy-bg-panel);
+  --dv-icon-hover-background-color: var(--canopy-accent-tint);
+  --dv-tab-group-color: transparent;
+
+  /* Text */
+  --dv-activegroup-visiblepanel-tab-color: var(--canopy-text-primary);
+  --dv-activegroup-hiddenpanel-tab-color: var(--canopy-text-secondary);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--canopy-text-secondary);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--canopy-text-secondary);
+  --dv-context-menu-color: var(--canopy-text-primary);
+  --dv-tab-font-size: var(--canopy-text-sm);
+  --dv-tabs-and-actions-container-font-size: var(--canopy-text-sm);
+  --dv-tab-group-chip-font-size: var(--canopy-text-sm);
+
+  /* Lines and sashes */
+  --dv-tab-divider-color: var(--canopy-border);
+  --dv-separator-border: var(--canopy-border);
+  --dv-paneview-header-border-color: var(--canopy-border);
+  --dv-paneview-active-outline-color: var(--canopy-accent);
+  --dv-scrollbar-background-color: var(--canopy-border);
+  --dv-tabs-container-scrollbar-color: var(--canopy-border);
+  --dv-sash-color: transparent;
+  --dv-active-sash-color: var(--canopy-accent);
+
+  /* Drop target: dockview never paints one (DropPreview does) */
+  --dv-drag-over-background-color: transparent;
+  --dv-drag-over-border-color: transparent;
+  --dv-drag-over-border: none;
+
+  /* Radii */
+  --dv-border-radius: var(--canopy-radius-sm);
+  --dv-sash-border-radius: var(--canopy-radius-sm);
+  --dv-tab-border-radius: var(--canopy-radius-sm);
+  --dv-dropdown-border-radius: var(--canopy-radius-sm);
+  --dv-tab-group-chip-border-radius: var(--canopy-radius-sm);
+
+  /* Sizes and spacing: the tile bar sizes itself */
+  --dv-tabs-and-actions-container-height: none;
+  --dv-tab-close-icon-size: none;
+  --dv-tab-margin: none;
+  --dv-spacing-padding: none;
+  --dv-tab-group-chip-padding: none;
+  --dv-tab-group-line-opacity: none;
+
+  /* Motion: none */
+  --dv-transition-duration: none;
+  --dv-active-sash-transition-duration: none;
+  --dv-active-sash-transition-delay: none;
+
+  /* Floating groups are disabled; their chrome is switched off */
+  --dv-floating-border: none;
+  --dv-floating-group-border: none;
+  --dv-floating-box-shadow: none;
+  --dv-floating-titlebar-height: none;
+  --dv-floating-titlebar-border-bottom: none;
+  --dv-floating-group-dragging-opacity: none;
+  --dv-overlay-z-index: none;
+}

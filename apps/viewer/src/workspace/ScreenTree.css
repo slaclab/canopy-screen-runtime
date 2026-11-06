@@ -1,0 +1,83 @@
+/* Workspace left panel: search + sub-screen toggle on top, a scrolling tree below. */
+
+.screen-tree {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  background: var(--canopy-bg-panel);
+  border-right: 1px solid var(--canopy-border);
+}
+
+.screen-tree__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--canopy-border);
+}
+
+.screen-tree__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* A top-level branch row (Pinned, Recent, a collection, Tools, All screens):
+   the host contract's `.canopy-section-heading` recipe on the row gives its
+   size, weight and colour at the row's height; every branch, collections
+   included, adds the letter-spaced capitals, and a long name ellipsises (its
+   row's title carries it in full). Every branch after the first is set off by
+   a rule. */
+.screen-tree [role='tree'] > .screen-tree__branch + .screen-tree__branch {
+  border-top: 1px solid var(--canopy-border);
+}
+
+.screen-tree__heading > .nav-tree__row .nav-tree__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* The Pin star: visible but dim on every member row, full on row hover
+   or keyboard focus, and always full when it marks a pinned row (then it
+   unpins). The pinned marker beside a trailing action is always shown. */
+.screen-tree .nav-tree__action--hover {
+  opacity: 0.35;
+}
+
+.screen-tree .nav-tree__row:hover .nav-tree__action--hover,
+.screen-tree .nav-tree__item:focus-visible > .nav-tree__row .nav-tree__action--hover,
+.screen-tree .nav-tree__action--hover:focus-visible,
+.screen-tree .nav-tree__action--persistent {
+  opacity: 1;
+}
+
+.screen-tree .nav-tree__action--hover svg,
+.screen-tree .nav-tree__marker svg {
+  fill: currentColor;
+}
+
+.screen-tree .nav-tree__action--persistent,
+.screen-tree .nav-tree__marker {
+  color: var(--canopy-accent);
+}
+
+.screen-tree .nav-tree__marker {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+/* The data browser is a tool, not a screen: its glyph carries the accent. */
+.screen-tree__trace > .nav-tree__row .nav-tree__icon {
+  color: var(--canopy-accent);
+}
+
+.screen-tree__empty {
+  padding: 0.5rem 1rem;
+  color: var(--canopy-text-secondary);
+}

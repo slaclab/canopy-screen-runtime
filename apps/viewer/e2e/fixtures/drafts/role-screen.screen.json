@@ -1,0 +1,176 @@
+{
+  "schemaVersion": "1.1",
+  "kind": "screen",
+  "id": "role-screen",
+  "metadata": {
+    "title": "Role Screen",
+    "source": {
+      "type": "screen-builder",
+      "savedAt": "2026-07-06T00:00:00.000Z"
+    },
+    "size": {
+      "width": 400,
+      "height": 240
+    }
+  },
+  "macros": [],
+  "root": {
+    "id": "root",
+    "type": "absolute-canvas",
+    "props": {
+      "backgroundColor": {
+        "$role": "Display_Background",
+        "fallback": "#ffffff",
+        "fallbackDark": "#161616"
+      },
+      "gridSize": 10,
+      "height": 240,
+      "showGrid": true,
+      "showHorizontalScrollbar": true,
+      "showVerticalScrollbar": true,
+      "snapToGrid": true,
+      "version": "1.0.0",
+      "width": 400
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 240
+    },
+    "children": [
+      {
+        "id": "id0002",
+        "type": "text-label",
+        "props": {
+          "fontSize": 14,
+          "foregroundColor": {
+            "$role": "Text",
+            "fallback": "#161616",
+            "fallbackDark": "#f4f4f4"
+          },
+          "name": "StaticLabel_id0002",
+          "opacity": 0,
+          "text": "Status"
+        },
+        "geometry": {
+          "x": 20,
+          "y": 20,
+          "width": 160,
+          "height": 24
+        }
+      },
+      {
+        "id": "id0003",
+        "type": "pv-label",
+        "props": {
+          "alarmSensitiveBorder": true,
+          "backgroundColor": {
+            "$role": "Read_Background",
+            "fallback": "#f4f4f4",
+            "fallbackDark": "#262626"
+          },
+          "foregroundColor": {
+            "$role": "ActiveText",
+            "fallback": "#0f62fe",
+            "fallbackDark": "#78a9ff"
+          },
+          "label": "Readback",
+          "name": "PVTextDisplay_id0003",
+          "pv": "DEV:RB"
+        },
+        "geometry": {
+          "x": 20,
+          "y": 60,
+          "width": 160,
+          "height": 24
+        },
+        "rules": [
+          {
+            "id": "r-id0003-1",
+            "name": "severity-background",
+            "targetProperty": "backgroundColor",
+            "default": {
+              "$role": "OK",
+              "fallback": "#24a148",
+              "fallbackDark": "#42be65"
+            },
+            "pvs": [
+              {
+                "name": "DEV:SEVR",
+                "trigger": true
+              }
+            ],
+            "conditions": [
+              {
+                "expression": "pv0 == 2",
+                "value": {
+                  "$role": "MAJOR",
+                  "fallback": "#da1e28",
+                  "fallbackDark": "#ff8389"
+                }
+              },
+              {
+                "expression": "pv0 == 1",
+                "value": {
+                  "$role": "MINOR",
+                  "fallback": "#f1c21b",
+                  "fallbackDark": "#f1c21b"
+                }
+              },
+              {
+                "expression": "pv0 == 3",
+                "value": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "id0004",
+        "type": "pv-led",
+        "props": {
+          "name": "PVLed_id0004",
+          "offColor": {
+            "$role": "Off",
+            "fallback": "#0e6027",
+            "fallbackDark": "#044317"
+          },
+          "onColor": {
+            "$role": "On",
+            "fallback": "#24a148",
+            "fallbackDark": "#42be65"
+          },
+          "pv": "DEV:STATE"
+        },
+        "geometry": {
+          "x": 200,
+          "y": 60,
+          "width": 24,
+          "height": 24
+        }
+      },
+      {
+        "id": "id0005",
+        "type": "rectangle",
+        "props": {
+          "fill": true,
+          "fillColor": "#11223344",
+          "lineColor": {
+            "$role": "Grid",
+            "fallback": "#c6c6c6",
+            "fallbackDark": "#757575"
+          },
+          "lineWidth": 1,
+          "name": "Rectangle_id0005"
+        },
+        "geometry": {
+          "x": 10,
+          "y": 10,
+          "width": 380,
+          "height": 100
+        }
+      }
+    ]
+  }
+}

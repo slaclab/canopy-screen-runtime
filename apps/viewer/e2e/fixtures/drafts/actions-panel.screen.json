@@ -1,0 +1,99 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "actions-panel",
+  "metadata": {
+    "title": "Actions Panel",
+    "source": {
+      "type": "screen-builder",
+      "savedAt": "2026-10-01T00:00:00Z"
+    },
+    "size": {
+      "width": 400,
+      "height": 200
+    }
+  },
+  "macros": [],
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 400,
+      "height": 200
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 200
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "regular-button",
+        "props": {
+          "label": "Open E2E Panel in tab",
+          "actions": [
+            {
+              "type": "open_display",
+              "file": "e2e-panel.screen.json",
+              "target": "tab"
+            }
+          ]
+        },
+        "geometry": {
+          "x": 10,
+          "y": 10,
+          "width": 220,
+          "height": 40
+        }
+      },
+      {
+        "id": "w-003",
+        "type": "regular-button",
+        "props": {
+          "label": "Open Macro Panel in tab",
+          "actions": [
+            {
+              "type": "open_display",
+              "file": "macro-panel.screen.json",
+              "target": "tab",
+              "macros": {
+                "DEVICE": "E2E2"
+              }
+            }
+          ]
+        },
+        "geometry": {
+          "x": 10,
+          "y": 60,
+          "width": 220,
+          "height": 40
+        }
+      },
+      {
+        "id": "w-004",
+        "type": "regular-button",
+        "props": {
+          "label": "Open Macro Panel",
+          "actions": [
+            {
+              "type": "open_display",
+              "file": "macro-panel.screen.json",
+              "target": "replace",
+              "macros": {
+                "DEVICE": "E2E3"
+              }
+            }
+          ]
+        },
+        "geometry": {
+          "x": 10,
+          "y": 110,
+          "width": 220,
+          "height": 40
+        }
+      }
+    ]
+  }
+}

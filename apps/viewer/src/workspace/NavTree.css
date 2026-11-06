@@ -1,0 +1,115 @@
+/* The sidebar tree (NavTree.tsx). Each row is the host contract's
+   `.canopy-row` recipe, which owns its size (text-md at control-h-xs, unitless
+   line-height); this sheet adds only the tree's own indent, guides, chevron,
+   colours and selection, so the tree follows its host's theme. The selected
+   row is an accent bar on the accent tint, with accent text. */
+
+.nav-tree,
+.nav-tree__group {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nav-tree {
+  padding: 0.25rem 0;
+}
+
+.nav-tree__item {
+  outline: none;
+}
+
+.nav-tree__row {
+  position: relative;
+  padding-right: 0.5rem;
+  color: var(--canopy-text-secondary);
+  font-family: var(--canopy-font-ui);
+  cursor: pointer;
+  user-select: none;
+  border-left: 2px solid transparent;
+}
+
+.nav-tree__row:hover {
+  background: var(--canopy-hover-tint);
+  color: var(--canopy-text-primary);
+}
+
+.nav-tree__row--selected {
+  background: var(--canopy-accent-tint);
+  border-left-color: var(--canopy-accent);
+  color: var(--canopy-accent);
+  font-weight: 600;
+}
+
+.nav-tree__row--selected:hover {
+  background: color-mix(in srgb, var(--canopy-accent-tint), var(--canopy-accent) 10%);
+  color: var(--canopy-accent);
+}
+
+/* The row a drag started from, until the drag ends (the ghost is its copy). */
+.nav-tree__row--dragging {
+  opacity: 0.5;
+}
+
+.nav-tree__item:focus-visible > .nav-tree__row {
+  outline: 2px solid var(--canopy-focus);
+  outline-offset: -2px;
+}
+
+.nav-tree__item--disabled > .nav-tree__row {
+  color: color-mix(in srgb, var(--canopy-text-muted) 50%, var(--canopy-bg-panel));
+  font-style: italic;
+  cursor: not-allowed;
+}
+
+.nav-tree__item--disabled > .nav-tree__row:hover {
+  background: transparent;
+}
+
+/* One vertical guide per ancestor level, through the chevron's centre. */
+.nav-tree__guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--canopy-border);
+  pointer-events: none;
+}
+
+.nav-tree__chevron {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  color: var(--canopy-text-secondary);
+  transition: transform 120ms ease;
+}
+
+.nav-tree__chevron svg {
+  fill: currentColor;
+}
+
+.nav-tree__chevron--open {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-tree__chevron {
+    transition: none;
+  }
+}
+
+.nav-tree__icon svg {
+  fill: currentColor;
+}
+
+.nav-tree__row:hover .nav-tree__icon {
+  color: var(--canopy-text-primary);
+}
+
+.nav-tree__row--selected .nav-tree__icon,
+.nav-tree__row--selected:hover .nav-tree__icon {
+  color: var(--canopy-accent);
+}

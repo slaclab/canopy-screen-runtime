@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "1.1",
+  "kind": "screen",
+  "id": "s-theme",
+  "metadata": {
+    "title": "S Theme",
+    "source": {
+      "type": "hand-authored"
+    },
+    "size": {
+      "width": 200,
+      "height": 60
+    }
+  },
+  "macros": [],
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 200,
+      "height": 60
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 200,
+      "height": 60
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "text-label",
+        "props": {
+          "text": "ROLE-MAJOR",
+          "foregroundColor": {
+            "$role": "MAJOR",
+            "fallback": "#000000",
+            "fallbackDark": "#000000"
+          }
+        },
+        "geometry": {
+          "x": 10,
+          "y": 10,
+          "width": 120,
+          "height": 20
+        }
+      }
+    ]
+  }
+}

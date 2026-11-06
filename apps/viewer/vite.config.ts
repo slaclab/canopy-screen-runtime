@@ -1,11 +1,32 @@
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { defaultClientConditions } from 'vite';
+import { defaultClientConditions, type Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
+// Ship the runtime's checked-in IR type table as dist/ir-map.json. Emitted as
+// a bundle asset (not via publicDir) so it is always the copy the runtime's
+// irMap test verified against the code.
+function irMapAsset(): Plugin {
+  const source = fileURLToPath(new URL('../../packages/runtime/ir-map.json', import.meta.url));
+  return {
+    name: 'canopy-ir-map',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'ir-map.json',
+        source: readFileSync(source, 'utf8'),
+      });
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
-  plugins: [react()],
+  // Relative asset URLs: the build is mounted under whatever path serves it.
+  base: './',
+  plugins: [react(), irMapAsset()],
   resolve: {
     // Sibling workspace packages are read from their source (the `canopy-source`
     // export condition). The bundle and the dev server keep Vite's client
@@ -21,5 +42,6 @@ export default defineConfig(({ mode }) => ({
   },
   test: {
     environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
   },
 }));

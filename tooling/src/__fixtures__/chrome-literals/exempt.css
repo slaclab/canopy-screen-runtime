@@ -1,0 +1,4 @@
+html[data-theme='light'] {
+  /* canopy-allow-literal: document background */
+  background: #ffffff;
+}

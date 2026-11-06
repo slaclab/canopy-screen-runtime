@@ -1,0 +1,94 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "label-fit",
+  "metadata": {
+    "title": "Label Fit",
+    "source": {
+      "type": "screen-builder",
+      "savedAt": "2026-09-30T00:00:00Z"
+    },
+    "size": {
+      "width": 120,
+      "height": 100
+    }
+  },
+  "macros": [],
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 120,
+      "height": 100
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 120,
+      "height": 100
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "text-label",
+        "props": {
+          "text": "BC1",
+          "fontSize": 8,
+          "align": "center"
+        },
+        "geometry": {
+          "x": 10,
+          "y": 10,
+          "width": 20,
+          "height": 12
+        }
+      },
+      {
+        "id": "w-003",
+        "type": "text-label",
+        "props": {
+          "text": "BPM1",
+          "fontSize": 8,
+          "align": "center"
+        },
+        "geometry": {
+          "x": 10,
+          "y": 30,
+          "width": 25,
+          "height": 12
+        }
+      },
+      {
+        "id": "w-004",
+        "type": "text-label",
+        "props": {
+          "text": "BR1 TV1",
+          "fontSize": 8,
+          "align": "center"
+        },
+        "geometry": {
+          "x": 10,
+          "y": 50,
+          "width": 30,
+          "height": 12
+        }
+      },
+      {
+        "id": "w-005",
+        "type": "text-label",
+        "props": {
+          "text": "ALPHA",
+          "fontSize": 8,
+          "align": "center",
+          "backgroundColor": "#ffffff00"
+        },
+        "geometry": {
+          "x": 10,
+          "y": 70,
+          "width": 40,
+          "height": 12
+        }
+      }
+    ]
+  }
+}

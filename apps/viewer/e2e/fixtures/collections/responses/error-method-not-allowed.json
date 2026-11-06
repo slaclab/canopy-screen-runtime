@@ -1,0 +1,4 @@
+{
+  "code": "method_not_allowed",
+  "detail": "allowed: GET, HEAD"
+}

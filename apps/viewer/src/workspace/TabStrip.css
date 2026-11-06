@@ -1,0 +1,138 @@
+/* Workspace tab strip: one row of tabs that scrolls horizontally. Height,
+   font and colours come from the host contract variables. */
+
+.tab-strip {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  box-sizing: border-box;
+  block-size: var(--canopy-control-h-sm);
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  background: var(--canopy-bg-panel);
+  border-bottom: 1px solid var(--canopy-border);
+  font-family: var(--canopy-font-ui);
+  font-size: var(--canopy-text-sm);
+  scrollbar-width: thin;
+}
+
+/* Overflow cue: the edge that hides tabs fades out. The classes follow the
+   scroll position (TabStrip's fades state); there are no chevron buttons.
+   A mask reads only alpha, so its opaque stop is a keyword, not a colour. */
+.tab-strip--fade-start {
+  -webkit-mask-image: linear-gradient(to right, transparent, black 2rem);
+  mask-image: linear-gradient(to right, transparent, black 2rem);
+}
+
+.tab-strip--fade-end {
+  -webkit-mask-image: linear-gradient(to left, transparent, black 2rem);
+  mask-image: linear-gradient(to left, transparent, black 2rem);
+}
+
+.tab-strip--fade-start.tab-strip--fade-end {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 2rem,
+    black calc(100% - 2rem),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 2rem,
+    black calc(100% - 2rem),
+    transparent
+  );
+}
+
+.tab-strip__tab {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 14rem;
+  padding: 0 0.25rem 0 0.75rem;
+  color: var(--canopy-text-secondary);
+  border-right: 1px solid var(--canopy-border);
+  border-top: 2px solid transparent;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tab-strip__tab:hover {
+  background: var(--canopy-hover-tint);
+}
+
+.tab-strip__tab:focus-visible {
+  outline: 2px solid var(--canopy-focus);
+  outline-offset: -2px;
+}
+
+.tab-strip__tab--active {
+  color: var(--canopy-text-primary);
+  background: var(--canopy-bg-base);
+  border-top-color: var(--canopy-accent);
+}
+
+.tab-strip__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.tab-strip__close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.tab-strip__close:hover {
+  background: var(--canopy-hover-tint);
+}
+
+.tab-strip__close:focus-visible {
+  outline: 2px solid var(--canopy-focus);
+}
+
+/* The window menu's ☰ (dock/WindowMenu): at the right end of the strip row
+   with one tile, else in the top-right tile's bar. */
+.canopy-window-menu {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  min-inline-size: var(--canopy-control-h-sm);
+  padding: 0 0.5rem;
+  border: 0;
+  background: transparent;
+  color: var(--canopy-text-secondary);
+  cursor: pointer;
+}
+
+.workspace__strip > .canopy-window-menu {
+  border-left: 1px solid var(--canopy-border);
+  border-bottom: 1px solid var(--canopy-border);
+  background: var(--canopy-bg-panel);
+}
+
+.canopy-window-menu:hover,
+.canopy-window-menu[aria-expanded='true'] {
+  color: var(--canopy-text-primary);
+  background: var(--canopy-hover-tint);
+}
+
+.canopy-window-menu:focus-visible {
+  outline: 2px solid var(--canopy-focus);
+  outline-offset: -2px;
+}

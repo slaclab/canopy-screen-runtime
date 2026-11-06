@@ -1,0 +1,14 @@
+{
+  "timestamp": 1700000000,
+  "pvs": {
+    "FIX:P1:MODE": { "value": 2, "connected": true },
+    "FIX:P1:AI": { "value": 42, "connected": true },
+    "FIX:P1:AI.SEVR": { "value": 2, "connected": true },
+    "FIX:P1:LEVEL": 3,
+    "FIX:P1:W1": 3,
+    "FIX:P1:W2": 4,
+    "FIX:P1:MEM_MAX": 8,
+    "FIX:P1:MEM_FREE": 2,
+    "FIX:P1:DEAD": { "value": 1, "connected": false }
+  }
+}

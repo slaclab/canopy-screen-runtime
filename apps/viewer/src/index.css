@@ -1,5 +1,8 @@
 /* Canopy Screens viewer chrome. Widget styles come from
-   @slaclab/canopy-screen-widgets/styles.css; Carbon from @carbon/styles. */
+   @slaclab/canopy-screen-widgets/styles.css; Carbon from @carbon/styles.
+   Colours come from the host contract variables (--canopy-*), which exist
+   only inside a Carbon <Theme> zone: every rule here that paints needs one
+   above it. */
 
 html,
 body,
@@ -12,8 +15,8 @@ body,
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--cds-background, #161616);
-  color: var(--cds-text-primary, #f4f4f4);
+  background: var(--canopy-bg-base);
+  color: var(--canopy-text-primary);
 }
 
 .viewer-content {
@@ -27,14 +30,14 @@ body,
 }
 
 .viewer-loading {
-  color: var(--cds-text-secondary, #8d8d8d);
+  color: var(--canopy-text-secondary);
 }
 
 .viewer-back {
   display: flex;
   align-items: center;
   padding: 0 1rem;
-  color: var(--cds-link-inverse, #78a9ff);
+  color: var(--canopy-accent);
   font-size: 0.875rem;
   text-decoration: none;
 }
@@ -43,59 +46,46 @@ body,
   text-decoration: underline;
 }
 
-/* The screen canvas renders at its authored pixel size on a dark backdrop. */
+/* The screen canvas renders at its authored pixel size on the page backdrop. */
 .viewer-canvas {
   min-height: 100%;
   padding: 1rem;
-  background: #161616;
+  background: var(--canopy-bg-base);
 }
 
-.viewer-canvas > [data-testid='screen-root'] {
-  background: #262626;
+.viewer-screen > [data-testid='screen-root'],
+.viewer-zoom__scaled > [data-testid='screen-root'] {
+  background: var(--canopy-bg-panel);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
-/* Browse cards */
-.screen-card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 1rem;
-  margin-top: 1rem;
+/* Unzoomed (/s/ route): a box that shrink-wraps the screen root. */
+.viewer-screen {
+  display: inline-block;
+  vertical-align: top;
 }
 
-.screen-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 1rem;
-  background: var(--cds-layer-01, #262626);
-  border: 1px solid var(--cds-border-subtle, #393939);
-  border-radius: 4px;
-  color: inherit;
-  text-decoration: none;
+/* Zoom (embed route): the outer box has the scaled size, the inner one the
+   authored size scaled from its top-left corner. In fit mode the scroll
+   container never scrolls, so a scrollbar cannot shrink the fit area and
+   trigger a re-fit. */
+.viewer-content--fit {
+  overflow: hidden;
 }
 
-.screen-card:hover {
-  border-color: var(--cds-border-interactive, #4589ff);
+.viewer-zoom {
+  position: relative;
 }
 
-.screen-card--disabled {
-  opacity: 0.6;
+.viewer-zoom__scaled {
+  transform-origin: 0 0;
 }
 
-.screen-card__title {
-  font-weight: 600;
-}
-
-.screen-card__meta {
-  font-size: 0.75rem;
-  color: var(--cds-text-secondary, #8d8d8d);
-  font-family: 'IBM Plex Mono', monospace;
-}
-
-.screen-card__note {
-  font-size: 0.75rem;
-  color: var(--cds-support-warning, #f1c21b);
+/* The invalid-document notice: full width of the page column, above <main>. */
+.viewer-page > .viewer-invalid-screen {
+  flex: none;
+  max-inline-size: none;
+  margin: 0.5rem 1rem;
 }
 
 /* Error panel */
@@ -103,9 +93,9 @@ body,
   max-width: 48rem;
   margin: 2rem auto;
   padding: 1rem 1.5rem;
-  border: 1px solid var(--cds-support-error, #da1e28);
+  border: 1px solid var(--canopy-status-error);
   border-left-width: 4px;
-  background: var(--cds-layer-01, #262626);
+  background: var(--canopy-bg-panel);
 }
 
 .viewer-error h2 {
@@ -118,5 +108,100 @@ body,
   white-space: pre-wrap;
   word-break: break-word;
   font-size: 0.8125rem;
-  color: var(--cds-text-secondary, #c6c6c6);
+  color: var(--canopy-text-secondary);
+}
+
+/* Print: the screen alone. Every bit of viewer chrome is hidden, the layout
+   boxes stop clipping, and the screen prints at its authored size scaled by
+   --canopy-print-scale, which screenActions/print.ts sets before each print
+   from the open screen's size (1, unscaled, when no screen is open). The
+   on-screen zoom transform does not apply on paper.
+
+   A split layout prints the focused screen only: the dock chrome
+   (the dock root with its tile bars and sashes, the strip, the watermark and
+   empty notices) is hidden, the focused overlay element drops its tile geometry
+   and flows at its own size, and every other overlay element is not displayed.
+   The focused screen is the one usePrintFit computed the scale for.
+
+   The Print action marks its own tile [data-printing] for the length of the
+   print (screenActions/print.ts printMarked), and a marked tile
+   takes the focused one's place: it gets the focused element's reset, and
+   while one is marked every other overlay element is hidden, the focused one
+   included. A browser-menu print marks nothing and prints the focused screen.
+   The :has() rule stands alone so a browser without :has() drops only it and
+   keeps the focused-only rules. */
+@media print {
+  .workspace__sidebar,
+  .pane-splitter,
+  .tab-strip,
+  .screen-header,
+  .canopy-header,
+  .viewer-action-error,
+  .viewer-invalid-screen,
+  .workspace-trace,
+  .workspace__strip,
+  .workspace__dock,
+  .workspace__dock-notice,
+  .canopy-dock-overlay__item:not([data-focused='true']) {
+    display: none !important;
+  }
+
+  .canopy-dock-overlay:has(> .canopy-dock-overlay__item[data-printing='true'])
+    > .canopy-dock-overlay__item:not([data-printing='true']) {
+    display: none !important;
+  }
+
+  html,
+  body,
+  #root,
+  .viewer-embed,
+  .workspace,
+  .workspace__main,
+  .workspace__content,
+  .canopy-dock-overlay,
+  .canopy-dock-overlay__item[data-focused='true'],
+  .canopy-dock-overlay > .canopy-dock-overlay__item[data-printing='true'],
+  .workspace__screen,
+  .viewer-page,
+  .viewer-content {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: none !important;
+  }
+
+  /* The overlay layer and the printed element leave the tile rect useTileRect
+     wrote inline and take part in normal flow, at the screen's own size. */
+  .canopy-dock-overlay,
+  .canopy-dock-overlay__item[data-focused='true'],
+  .canopy-dock-overlay > .canopy-dock-overlay__item[data-printing='true'] {
+    position: static !important;
+    inset: auto !important;
+    width: auto !important;
+    visibility: visible !important;
+  }
+
+  .viewer-canvas {
+    min-height: 0 !important;
+    padding: 0 !important;
+    background: none !important;
+    zoom: var(--canopy-print-scale, 1);
+  }
+
+  .viewer-zoom {
+    width: auto !important;
+    height: auto !important;
+  }
+
+  .viewer-zoom__scaled {
+    transform: none !important;
+  }
+
+  [data-testid='screen-root'] {
+    box-shadow: none !important;
+    break-inside: avoid;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
 }

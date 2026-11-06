@@ -1,0 +1,28 @@
+/* The Save open tabs as collection dialog: its summary, the list of tabs left
+   out as duplicates and the note on a layout that cannot be kept. */
+
+.save-collection__summary {
+  margin-bottom: 1rem;
+}
+
+.save-collection__dropped {
+  margin-bottom: 1rem;
+  color: var(--canopy-text-muted);
+  font-size: var(--canopy-text-sm);
+}
+
+.save-collection__dropped ul {
+  margin-block-start: 0.25rem;
+  padding-inline-start: 1rem;
+  list-style: disc;
+}
+
+.save-collection__layout {
+  margin-block-start: 1rem;
+}
+
+.save-collection__note {
+  margin-block-start: 0.25rem;
+  color: var(--canopy-text-muted);
+  font-size: var(--canopy-text-sm);
+}

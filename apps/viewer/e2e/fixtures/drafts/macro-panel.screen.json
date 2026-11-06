@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "macro-panel",
+  "metadata": {
+    "title": "Macro Panel",
+    "source": {
+      "type": "screen-builder",
+      "savedAt": "2026-10-01T00:00:00Z"
+    },
+    "size": {
+      "width": 400,
+      "height": 200
+    }
+  },
+  "macros": [
+    {
+      "name": "DEVICE",
+      "default": "E2E",
+      "description": "Device prefix"
+    }
+  ],
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 400,
+      "height": 200
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 200
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "pv-label",
+        "props": {
+          "pv": "${DEVICE}:PRESSURE",
+          "precision": "fromPV"
+        },
+        "geometry": {
+          "x": 10,
+          "y": 20,
+          "width": 200,
+          "height": 30
+        }
+      }
+    ]
+  }
+}

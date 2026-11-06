@@ -1,0 +1,203 @@
+{
+  "screens": [
+    {
+      "id": "e2e-panel",
+      "kind": "ir",
+      "title": "E2E Panel",
+      "category": "drafts",
+      "path": "e2e-panel.screen.json",
+      "schemaVersion": "1.0"
+    },
+    {
+      "id": "label-fit",
+      "kind": "ir",
+      "title": "Label Fit",
+      "category": "drafts",
+      "path": "label-fit.screen.json",
+      "schemaVersion": "1.0"
+    },
+    {
+      "id": "wide-panel",
+      "kind": "ir",
+      "title": "Wide Panel",
+      "category": "drafts",
+      "path": "wide-panel.screen.json",
+      "schemaVersion": "1.0"
+    },
+    {
+      "id": "embedded/_sub",
+      "kind": "ir",
+      "title": "Sub Screen",
+      "category": "drafts",
+      "path": "embedded/_sub.screen.json",
+      "schemaVersion": "1.0"
+    },
+    {
+      "id": "macro-panel",
+      "kind": "ir",
+      "title": "Macro Panel",
+      "category": "drafts",
+      "path": "macro-panel.screen.json",
+      "schemaVersion": "1.0",
+      "macros": [
+        {
+          "name": "DEVICE",
+          "default": "E2E",
+          "description": "Device prefix"
+        }
+      ]
+    },
+    {
+      "id": "actions-panel",
+      "kind": "ir",
+      "title": "Actions Panel",
+      "category": "drafts",
+      "path": "actions-panel.screen.json",
+      "schemaVersion": "1.0"
+    },
+    {
+      "id": "hover-panel",
+      "kind": "ir",
+      "title": "Hover Panel",
+      "category": "drafts",
+      "path": "hover-panel.screen.json",
+      "schemaVersion": "1.0"
+    },
+    {
+      "id": "plot-panel",
+      "kind": "ir",
+      "title": "Plot Panel",
+      "category": "drafts",
+      "path": "plot-panel.screen.json",
+      "schemaVersion": "1.0"
+    },
+    {
+      "id": "xss-title",
+      "kind": "ir",
+      "title": "<img src=x onerror=alert(1)>",
+      "category": "drafts",
+      "path": "xss-title.screen.json",
+      "schemaVersion": "1.0"
+    },
+    {
+      "id": "legacy-wrapper",
+      "kind": "wrapper",
+      "title": "Legacy Wrapper",
+      "category": "drafts",
+      "path": "legacy-wrapper.py",
+      "schemaVersion": "1.0"
+    },
+    {
+      "id": "ops-panel",
+      "kind": "ir",
+      "title": "Ops Panel",
+      "category": "ops",
+      "path": "ops/ops-panel.screen.json",
+      "schemaVersion": "1.0"
+    },
+    {
+      "id": "internal",
+      "kind": "ir",
+      "title": "Internal Screen",
+      "category": "@internal",
+      "path": "e2e-panel.screen.json",
+      "schemaVersion": "1.0"
+    },
+    {
+      "id": "line-a/a",
+      "kind": "ir",
+      "title": "Alpha A",
+      "category": "lines",
+      "path": "lines/line-a/a.screen.json",
+      "schemaVersion": "1.0"
+    },
+    {
+      "id": "line-a/b",
+      "kind": "ir",
+      "title": "Alpha B",
+      "category": "lines",
+      "path": "lines/line-a/b.screen.json",
+      "schemaVersion": "1.0"
+    },
+    {
+      "id": "line-b/c",
+      "kind": "ir",
+      "title": "Beta C",
+      "category": "lines",
+      "path": "lines/line-b/c.screen.json",
+      "schemaVersion": "1.0"
+    },
+    {
+      "id": "fixture-mode",
+      "kind": "ir",
+      "title": "Fixture Mode",
+      "category": "drafts",
+      "path": "fixture-mode.screen.json",
+      "schemaVersion": "1.0"
+    },
+    {
+      "id": "numeric-entry-message",
+      "kind": "ir",
+      "title": "Numeric Entry Message",
+      "category": "drafts",
+      "path": "numeric-entry-message.screen.json",
+      "schemaVersion": "1.1"
+    },
+    {
+      "id": "s-theme",
+      "kind": "ir",
+      "title": "S Theme",
+      "category": "drafts",
+      "path": "s-theme.screen.json",
+      "schemaVersion": "1.1"
+    },
+    {
+      "id": "synthetic-large",
+      "kind": "ir",
+      "title": "Synthetic large",
+      "category": "drafts",
+      "path": "synthetic-large/main.screen.json",
+      "schemaVersion": "1.1"
+    },
+    {
+      "id": "plot-theming",
+      "kind": "ir",
+      "title": "Plot Theming",
+      "category": "drafts",
+      "path": "plot-theming.screen.json",
+      "schemaVersion": "1.1"
+    },
+    {
+      "id": "role-screen",
+      "kind": "ir",
+      "title": "Role Screen",
+      "category": "drafts",
+      "path": "role-screen.screen.json",
+      "schemaVersion": "1.1"
+    },
+    {
+      "id": "write-probe",
+      "kind": "ir",
+      "title": "Write Probe",
+      "category": "drafts",
+      "path": "write-probe.screen.json",
+      "schemaVersion": "1.0"
+    },
+    {
+      "id": "host-probe",
+      "kind": "ir",
+      "title": "Host Probe",
+      "category": "drafts",
+      "path": "host-probe.screen.json",
+      "schemaVersion": "1.1"
+    },
+    {
+      "id": "write-button",
+      "kind": "ir",
+      "title": "Write Button",
+      "category": "drafts",
+      "path": "write-button.screen.json",
+      "schemaVersion": "1.0"
+    }
+  ]
+}

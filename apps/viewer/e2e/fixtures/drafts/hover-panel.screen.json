@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "hover-panel",
+  "metadata": {
+    "title": "Hover Panel",
+    "source": { "type": "screen-builder", "savedAt": "2026-10-21T00:00:00Z" },
+    "size": { "width": 400, "height": 200 }
+  },
+  "macros": [],
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": { "width": 400, "height": 200 },
+    "geometry": { "x": 0, "y": 0, "width": 400, "height": 200 },
+    "children": [
+      {
+        "id": "section-label",
+        "type": "text-label",
+        "props": {
+          "fontSize": 18,
+          "foregroundColor": { "$role": "Text", "fallback": "#161616", "fallbackDark": "#f4f4f4" },
+          "text": "Section"
+        },
+        "geometry": { "x": 60, "y": 50, "width": 200, "height": 26 }
+      },
+      {
+        "id": "section-area",
+        "type": "rectangle",
+        "props": {
+          "fill": false,
+          "lineColor": { "$role": "Grid", "fallback": "#c6c6c6", "fallbackDark": "#757575" },
+          "lineWidth": 1,
+          "actions": [
+            { "type": "open_display", "file": "e2e-panel.screen.json", "target": "replace" }
+          ],
+          "hoverLabel": "Open E2E Panel →",
+          "outlineColor": {
+            "$role": "DISCONNECTED",
+            "fallback": "#6f6f6f",
+            "fallbackDark": "#8d8d8d"
+          },
+          "outlineWidth": 3
+        },
+        "geometry": { "x": 40, "y": 40, "width": 240, "height": 120 },
+        "rules": [
+          {
+            "id": "section-alarm-tint",
+            "name": "Section alarm tint",
+            "targetProperty": "outlineColor",
+            "default": { "$role": "OK", "fallback": "#24a148", "fallbackDark": "#42be65" },
+            "pvs": [{ "name": "HOV:SEC:ALARM", "trigger": true }],
+            "conditions": [
+              {
+                "expression": "{0} >= 2",
+                "value": { "$role": "MAJOR", "fallback": "#da1e28", "fallbackDark": "#ff8389" }
+              },
+              {
+                "expression": "{0} >= 1",
+                "value": { "$role": "MINOR", "fallback": "#f1c21b" }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

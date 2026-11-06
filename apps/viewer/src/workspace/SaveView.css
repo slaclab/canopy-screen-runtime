@@ -1,0 +1,26 @@
+/* A tool's Save view action in its tile bar, and the save dialog's summary. */
+
+/* Beside the button in a tool's tile bar: in a narrow tile the status gives way
+   to the button, shortened with an ellipsis. */
+.save-view__status {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--canopy-text-muted);
+  font-size: var(--canopy-text-sm);
+  white-space: nowrap;
+}
+
+.save-view__status:empty {
+  display: none;
+}
+
+/* The button is the shell's `canopy-btn`; only its icon is coloured here. */
+.save-view__button svg {
+  fill: currentColor;
+}
+
+.save-view__summary {
+  margin-bottom: 1rem;
+}

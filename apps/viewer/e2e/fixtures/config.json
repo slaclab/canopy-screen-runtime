@@ -1,0 +1,110 @@
+{
+  "pvMode": "mock",
+  "screensPath": "drafts",
+  "themes": {},
+  "trace": {
+    "path": "trace/",
+    "query": ""
+  },
+  "correlation": {
+    "path": "trace/correlation.html",
+    "query": ""
+  },
+  "waveform": {
+    "path": "trace/waveform.html",
+    "query": ""
+  },
+  "views": {
+    "path": "views"
+  },
+  "colorScheme": {
+    "roles": [
+      "Transparent",
+      "OK",
+      "MINOR",
+      "MAJOR",
+      "INVALID",
+      "DISCONNECTED",
+      "Text",
+      "ActiveText",
+      "Background",
+      "Read_Background",
+      "Write_Background",
+      "Button_Background",
+      "Grid",
+      "Grid_Fill",
+      "Display_Background",
+      "On",
+      "Off",
+      "Header_Background",
+      "Header_ForeGround",
+      "Attention",
+      "STOP",
+      "SYN_Probe",
+      "SYN_Accent_A",
+      "SYN_Accent_B",
+      "SYN_Reset"
+    ],
+    "light": [
+      "#7f989b00",
+      "#b2153d",
+      "#eeda2c",
+      "#5b9f17",
+      "#ed6a60",
+      "#544ef9",
+      "#82925c",
+      "#677a8c",
+      "#7d6ce7",
+      "#7a8917",
+      "#5342e5",
+      "#56da24",
+      "#42ac51",
+      "#b99c9b",
+      "#dff3cc",
+      "#98c603",
+      "#878fc8",
+      "#5cbd01",
+      "#0d8920",
+      "#bd0e65",
+      "#617f49",
+      "#b1298e",
+      "#48b7bf",
+      "#7e2705",
+      "#e40b4a"
+    ],
+    "dark": [
+      "#4df24e00",
+      "#8a6bfb",
+      "#17893e",
+      "#356d45",
+      "#49a2de",
+      "#4fd0ad",
+      "#a9798c",
+      "#b0e09a",
+      "#082943",
+      "#23d8eb",
+      "#e26393",
+      "#472448",
+      "#94b59b",
+      "#a45b3d",
+      "#22b720",
+      "#bb7336",
+      "#37c065",
+      "#a1a63f",
+      "#4ccde5",
+      "#2031ba",
+      "#b79dba",
+      "#1ac16e",
+      "#436035",
+      "#7b65d3",
+      "#b10eb7"
+    ],
+    "meta": {
+      "id": "synthetic-e2e",
+      "sha256": "0acd9a3ead564f665abfa8c31b95c6a098e7a4fa8bf10e4073aa3fc77e39f371",
+      "flatHash": "0acd9a3ead564f665abfa8c31b95c6a098e7a4fa8bf10e4073aa3fc77e39f371",
+      "served": "synthetic-e2e",
+      "errors": []
+    }
+  }
+}

@@ -1,0 +1,100 @@
+/* The viewer-owned overlay layer. The layer is the dock root's next
+   sibling and every docked panel's content renders once inside it, placed over its tile by
+   useTileRect with inline top/left/width/height.
+
+   Safety contract: nothing here may make the layer or an overlay element a stacking
+   context or a containing block for fixed descendants. No z-index (the layer stays at the
+   default auto), transform, will-change, contain, filter, perspective, backdrop-filter or
+   isolation, so a screen's write dialog and toasts keep the viewport as containing block
+   and sashes and the drop highlight paint above the tiles. overlay.test.tsx reads this file
+   and enforces the list.
+
+   Pointer events: the layer covers the whole dock but lets clicks through to the tile bars
+   and sashes beneath it; only the overlay elements take hits. While a drag is in flight the
+   dragging class turns every overlay element off by CSS rule, never inline: dockview
+   snapshots each iframe's inline pointer-events when a drag starts and restores it when the
+   drag ends, so an inline value of ours would break that restore. */
+
+.canopy-dock-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Unplaced default: the layer's box. useTileRect writes the
+   tile's content rect inline over these. */
+.canopy-dock-overlay__item {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+/* No placeholder (undocked, or its tile is gone): kept mounted, never shown at a stale rect. */
+.canopy-dock-overlay__item[data-placed='false'] {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* The drag shield. pointer-events inherits into frames that carry no inline value. */
+.canopy-dock-overlay--dragging .canopy-dock-overlay__item {
+  pointer-events: none;
+}
+
+/* The shield reaches every descendant too: a screen's clickable widgets carry an inline
+   pointer-events: auto, which would otherwise take the drag's hit-test over a tile and
+   swallow its drop. */
+.canopy-dock-overlay--dragging .canopy-dock-overlay__item * {
+  pointer-events: none !important;
+}
+
+/* The drop preview, painted by DropPreview.tsx. It is mounted
+   after the overlay layer in the same positioned parent, so DOM order paints it above the
+   tiles with no z-index (see the safety contract above). It never takes pointer events: dragover must keep reaching
+   the dock beneath it, or the target under the pointer would be the preview itself.
+
+   The rect is the zone itself: the hovered tile, or the half an edge drop lands in. The
+   drop placeholder painted in it is inset 4 px with an 8 px radius and a 2 px accent
+   stroke, filled with the host contract's drop-target fill (a fifth of the accent); the rect
+   glides between zones over 0.25 s (geometry only, so no transform). An add-as-tab target
+   paints the same placeholder over the whole tile plus the insertion marker in the bar. */
+
+.canopy-dock-drop-preview {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.canopy-dock-drop-preview__rect {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+  transition:
+    top 0.25s cubic-bezier(0.34, 1.2, 0.64, 1),
+    left 0.25s cubic-bezier(0.34, 1.2, 0.64, 1),
+    width 0.25s cubic-bezier(0.34, 1.2, 0.64, 1),
+    height 0.25s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+.canopy-dock-drop-preview__placeholder {
+  position: absolute;
+  inset: 4px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  background-color: color-mix(in srgb, var(--canopy-accent) 20%, transparent);
+  border: 2px solid var(--canopy-accent);
+  pointer-events: none;
+}
+
+/* The tab insertion gap: a bar-high accent line centred on the gap's x. */
+.canopy-dock-drop-preview__marker {
+  position: absolute;
+  width: 3px;
+  margin-left: -1px;
+  background-color: var(--canopy-accent);
+  pointer-events: none;
+}

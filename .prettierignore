@@ -18,3 +18,10 @@ src/routeTree.gen.ts
 # Byte-pinned expand() vectors, written by packages/runtime/src/render/expandVectors.test.ts (regenerate with vitest -u)
 packages/runtime/src/render/__fixtures__/expand-cases.json
 packages/runtime/src/render/__fixtures__/expand-vectors.json
+
+# Byte copy of canopy's machine-statement vectors (src/canopy/contracts/heartbeat_vectors.json); never reformat
+apps/viewer/e2e/fixtures/contracts/
+# Byte copies of canopy's collection fixtures (some deliberately malformed); never reformat
+apps/viewer/e2e/fixtures/collections/
+# Byte copies of canopy's workspace contract fixtures; build-payload.sh compares them by blob id
+apps/viewer/e2e/fixtures/workspace/

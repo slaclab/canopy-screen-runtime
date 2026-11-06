@@ -44,9 +44,9 @@ for it. `pnpm build` produces what ships — the package tarballs and the viewer
 the browser tests serve — and nothing else depends on it, so an edit in one package
 is seen by every sibling at once.
 
-The viewer's [README](apps/viewer/README.md) documents pointing
-`VITE_SCREENS_BASE_URL` at a locally served canopy-screens checkout for the
-end-to-end smoke test.
+The viewer's [README](apps/viewer/README.md) documents its runtime
+`config.json` (`pvMode`, `screensPath`, `themes`) and pointing `screensPath` at
+a locally served canopy-screens checkout for the end-to-end smoke test.
 
 ## SDK dependencies: published vs linked (local dev)
 

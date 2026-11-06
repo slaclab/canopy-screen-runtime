@@ -1,0 +1,139 @@
+/* The screen header: canopy-shell's AppHeader (a g100 Carbon Header, 48 px)
+   with the screen title, the zoom group and the action buttons. The bar's
+   paint is the shell's, and the zoom buttons are its `canopy-btn`; colours
+   and fonts here come from the host contract variables. */
+
+.screen-header {
+  flex: none;
+  min-width: 0;
+}
+
+.screen-header .canopy-header {
+  min-width: 0;
+}
+
+.screen-header__info {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+  padding-right: 0.75rem;
+}
+
+.screen-header__title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--canopy-text-primary);
+  font-size: 0.875rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.screen-header__detail {
+  margin-left: 0.5rem;
+  color: var(--canopy-text-muted);
+  font-family: var(--canopy-font-mono);
+  font-size: 0.75rem;
+}
+
+/* The global bar keeps its buttons' width; the title takes the rest. */
+.screen-header .cds--header__global {
+  flex: none;
+  align-items: center;
+}
+
+.screen-header__zoom {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.125rem;
+  padding-right: 0.5rem;
+  color: var(--canopy-text-primary);
+  font-size: 0.8125rem;
+}
+
+/* ◀ ▶ are a sibling of the title block and never shrink: in a narrow bar the
+   title gives way, not the buttons. */
+.screen-header__history {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.125rem;
+  padding-right: 1rem;
+  color: var(--canopy-text-primary);
+  font-size: 0.75rem;
+}
+
+/* A narrow bar drops the product label before it collapses the zoom group. */
+.screen-header--no-label .canopy-header__name {
+  display: none;
+}
+
+/* A narrow bar's overflow menu: the zoom group and the actions, portalled to
+   the body under the "More controls" button and painted as the g100 bar. */
+.screen-header__overflow {
+  position: fixed;
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  max-width: calc(100vw - 0.5rem);
+  padding: 0.25rem;
+  border: 1px solid var(--canopy-border);
+  background: var(--canopy-bg-elevated);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 30%);
+}
+
+.screen-header__overflow[hidden] {
+  display: none;
+}
+
+.screen-header__overflow .screen-header__zoom {
+  padding-right: 0;
+}
+
+.screen-header__overflow-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.screen-header__percent {
+  min-width: 3rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.screen-actions__status {
+  align-self: center;
+  padding: 0 0.75rem;
+  color: var(--canopy-text-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.screen-actions__status:empty {
+  display: none;
+}
+
+.screen-actions__status--error {
+  color: var(--canopy-status-error);
+}
+
+/* A tile header's compact zoom ("41 % ▾"): one button that opens the zoom group. */
+.screen-header__zoom-menu {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  margin-right: 0.25rem;
+  white-space: nowrap;
+  font-size: 0.8125rem;
+}
+
+.screen-header__zoom-menu .screen-header__percent {
+  min-width: 0;
+}

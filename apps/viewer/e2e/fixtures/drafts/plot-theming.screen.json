@@ -1,0 +1,102 @@
+{
+  "schemaVersion": "1.1",
+  "kind": "screen",
+  "id": "plot-theming",
+  "metadata": {
+    "title": "Plot Theming",
+    "source": {
+      "type": "hand-authored"
+    },
+    "size": {
+      "width": 320,
+      "height": 240
+    }
+  },
+  "macros": [],
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 320,
+      "height": 240
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 320,
+      "height": 240
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "xy-plot",
+        "geometry": {
+          "x": 10,
+          "y": 10,
+          "width": 300,
+          "height": 220
+        },
+        "props": {
+          "title": "",
+          "curves": [
+            {
+              "x_channel": "loc://plot_theming_x1?type=float&init=-2",
+              "y_channel": "loc://plot_theming_y1?type=float&init=3",
+              "name": "",
+              "color": {
+                "$role": "SYN_Accent_A",
+                "fallback": "#000000",
+                "fallbackDark": "#000000"
+              },
+              "symbol": "circle",
+              "symbolSize": 14,
+              "traceType": "line",
+              "lineWidth": 2,
+              "lineStyle": 1,
+              "yAxisName": "y0"
+            },
+            {
+              "x_channel": "loc://plot_theming_x2?type=float&init=2",
+              "y_channel": "loc://plot_theming_y2?type=float&init=-3",
+              "name": "",
+              "color": {
+                "$role": "SYN_Accent_B",
+                "fallback": "#000000",
+                "fallbackDark": "#000000"
+              },
+              "symbol": "circle",
+              "symbolSize": 14,
+              "traceType": "none",
+              "lineWidth": 2,
+              "lineStyle": 1,
+              "yAxisName": "y0"
+            }
+          ],
+          "xAxis": {
+            "name": "x",
+            "label": "",
+            "autoRange": false,
+            "logMode": false,
+            "minRange": -10,
+            "maxRange": 10,
+            "grid": true,
+            "visible": true
+          },
+          "yAxes": [
+            {
+              "name": "y0",
+              "label": "",
+              "autoRange": false,
+              "logMode": false,
+              "minRange": -10,
+              "maxRange": 10,
+              "grid": true,
+              "visible": true
+            }
+          ],
+          "showLegend": false
+        }
+      }
+    ]
+  }
+}

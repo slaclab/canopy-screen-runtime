@@ -1,0 +1,21 @@
+/* Embed mode (/embed/...): the frame follows its host's light/dark choice.
+   The viewer chrome reads the host contract variables, which follow the
+   Carbon <Theme> zone, so only two things are left to say here: the document
+   background, which sits above every zone and so cannot read a contract
+   variable, and the lighter drop shadow under a screen on a light page.
+   EmbedPage sets html[data-theme='light']. */
+
+.viewer-embed {
+  height: 100%;
+}
+
+html[data-theme='light'],
+html[data-theme='light'] body {
+  /* canopy-allow-literal: document background */
+  background: #ffffff;
+}
+
+html[data-theme='light'] .viewer-embed .viewer-screen > [data-testid='screen-root'],
+html[data-theme='light'] .viewer-embed .viewer-zoom__scaled > [data-testid='screen-root'] {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}

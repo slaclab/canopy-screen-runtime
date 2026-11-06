@@ -1,0 +1,7 @@
+/* was #0f62fe before the contract */
+.clean {
+  color: var(--canopy-accent);
+  font: inherit;
+  font-family: var(--canopy-font-mono);
+  font-size: 12px;
+}

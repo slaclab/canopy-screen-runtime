@@ -5,6 +5,13 @@ site_author = "SLAC National Accelerator Laboratory - EED / Software Application
 #site_url = "https://www.example.com/"
 docs_dir = "docs"
 
+# Navigation
+nav = [
+  { "Home" = "index.md" },
+  { "The dock" = "dock.md" },
+  { "Host embedding" = "host-embedding.md" },
+]
+
 
 # Repository
 repo_name = "slaclab/canopy-screen-runtime"

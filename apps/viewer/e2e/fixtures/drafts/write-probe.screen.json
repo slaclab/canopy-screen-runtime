@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "write-probe",
+  "metadata": {
+    "title": "Write Probe",
+    "source": {
+      "type": "hand-authored"
+    },
+    "size": {
+      "width": 400,
+      "height": 120
+    }
+  },
+  "macros": [],
+  "root": {
+    "id": "w-001",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 400,
+      "height": 120
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 120
+    },
+    "children": [
+      {
+        "id": "w-002",
+        "type": "pv-text-input",
+        "props": {
+          "pv": "PROBE:WRITE"
+        },
+        "geometry": {
+          "x": 10,
+          "y": 20,
+          "width": 200,
+          "height": 30
+        }
+      }
+    ]
+  }
+}

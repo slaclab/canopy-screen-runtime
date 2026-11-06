@@ -1,0 +1,168 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "screen",
+  "id": "fixture-mode",
+  "metadata": {
+    "title": "Fixture Mode",
+    "source": {
+      "type": "hand-authored"
+    },
+    "size": {
+      "width": 400,
+      "height": 260
+    }
+  },
+  "macros": [
+    {
+      "name": "P",
+      "default": "FIX:P1"
+    }
+  ],
+  "formulas": [
+    {
+      "name": "wsum",
+      "kind": "scalar",
+      "expression": "'wide' if (A + B) > 5 else 'narrow'",
+      "bindings": {
+        "A": "${P}:W1",
+        "B": "${P}:W2"
+      }
+    },
+    {
+      "name": "f-001",
+      "kind": "scalar",
+      "expression": "{0} / {1} * 100",
+      "bindings": {
+        "0": "${P}:MEM_MAX",
+        "1": "${P}:MEM_FREE"
+      }
+    }
+  ],
+  "root": {
+    "id": "fx-root",
+    "type": "absolute-canvas",
+    "props": {
+      "width": 400,
+      "height": 260
+    },
+    "geometry": {
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 260
+    },
+    "children": [
+      {
+        "id": "fx-mode",
+        "type": "pv-label",
+        "props": {
+          "pv": "${P}:MODE"
+        },
+        "geometry": {
+          "x": 10,
+          "y": 10,
+          "width": 180,
+          "height": 30
+        }
+      },
+      {
+        "id": "fx-ai",
+        "type": "pv-label",
+        "props": {
+          "pv": "${P}:AI"
+        },
+        "geometry": {
+          "x": 200,
+          "y": 10,
+          "width": 180,
+          "height": 30
+        }
+      },
+      {
+        "id": "fx-dead",
+        "type": "pv-label",
+        "props": {
+          "pv": "${P}:DEAD"
+        },
+        "geometry": {
+          "x": 10,
+          "y": 50,
+          "width": 180,
+          "height": 30
+        }
+      },
+      {
+        "id": "fx-fox",
+        "type": "pv-label",
+        "props": {
+          "pv": "formula://f-001"
+        },
+        "geometry": {
+          "x": 200,
+          "y": 50,
+          "width": 180,
+          "height": 30
+        }
+      },
+      {
+        "id": "fx-ladder",
+        "type": "text-label",
+        "props": {
+          "text": "LADDER-DEFAULT"
+        },
+        "geometry": {
+          "x": 10,
+          "y": 90,
+          "width": 180,
+          "height": 30
+        },
+        "rules": [
+          {
+            "id": "r-ladder",
+            "name": "level ladder",
+            "targetProperty": "text",
+            "default": "LADDER-DEFAULT",
+            "pvs": [
+              {
+                "name": "${P}:LEVEL",
+                "trigger": true
+              }
+            ],
+            "conditions": [
+              {
+                "expression": "{0} > 5",
+                "value": "LADDER-HIGH"
+              },
+              {
+                "expression": "{0} > 2",
+                "value": "LADDER-MID"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "fx-arm",
+        "type": "text-label",
+        "props": {
+          "text": "ARM-DEFAULT"
+        },
+        "geometry": {
+          "x": 200,
+          "y": 90,
+          "width": 180,
+          "height": 30
+        },
+        "rules": [
+          {
+            "id": "r-arm",
+            "name": "formula arm",
+            "targetProperty": "text",
+            "default": "ARM-DEFAULT",
+            "formula": "wsum"
+          }
+        ]
+      }
+    ]
+  }
+}

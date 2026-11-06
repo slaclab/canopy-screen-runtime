@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!-- A stand-in for the react-trace build, served by e2e/server.mjs at
+         <prefix>/trace/ with <base href="<prefix>/trace/"> injected first in
+         <head>. No inline script: production serves Trace under
+         script-src 'self'. Behaviour lives in assets/stub.js; the
+         on-request canopy:trace-open hook (window.__postTraceOpen) in
+         assets/trace-open.js, which the server provides. -->
+    <link rel="icon" href="data:," />
+    <title>Trace stub</title>
+  </head>
+  <body data-visible="true">
+    <main id="trace-stub">
+      <h1>Trace stub</h1>
+      <p>probe <span id="probe"></span>, polls <span id="polls">0</span></p>
+    </main>
+    <script src="assets/stub.js"></script>
+    <script src="assets/trace-open.js"></script>
+  </body>
+</html>

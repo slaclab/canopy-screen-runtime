@@ -1,0 +1,157 @@
+/* The Collections popover: Facility / Personal groups of checkbox rows with an
+   "Open all" button each, and a save footer. Type comes from --canopy-text-*.
+   A row's line is checkbox + badge + "· N · <when>" (the name ellipsises
+   first), Open all and the menu button never shrink, and the description sits
+   beneath, clamped to two lines. The width is capped at the viewport and the
+   body never scrolls sideways, so a narrow sidebar never hides Open all. */
+
+.collections-popover {
+  display: inline-block;
+}
+
+.collections-popover__trigger {
+  font-size: var(--canopy-text-md);
+}
+
+.collections-popover__body {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: min(16rem, calc(100vw - 1rem));
+  max-inline-size: min(24rem, calc(100vw - 1rem));
+  max-block-size: 60vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0.5rem 0;
+  background: var(--canopy-bg-panel);
+  color: var(--canopy-text-primary);
+}
+
+.collections-popover__heading {
+  margin: 0;
+  padding: 0.5rem 1rem 0.25rem;
+  font-size: var(--canopy-text-sm);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.collections-popover__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.collections-popover__content {
+  max-inline-size: calc(100vw - 1rem);
+}
+
+.collections-popover__row {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-block-size: var(--canopy-control-h-xs);
+  padding: 0 1rem;
+  font-size: var(--canopy-text-md);
+}
+
+.collections-popover__line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-inline-size: 0;
+}
+
+.collections-popover__label {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.25rem;
+  min-inline-size: 0;
+}
+
+.collections-popover__name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Carbon's form item is a column flexbox with align-items: flex-start, so the
+   label would keep its max-content width and spill past the suffix; cap it at
+   the checkbox's width so the name inside it ellipsises. */
+.collections-popover__check .cds--checkbox-label {
+  max-inline-size: 100%;
+}
+
+.collections-popover__check .cds--checkbox-label,
+.collections-popover__check .cds--checkbox-label-text {
+  min-inline-size: 0;
+  overflow: hidden;
+}
+
+.collections-popover__suffix {
+  flex: none;
+  white-space: nowrap;
+  font-size: var(--canopy-text-sm);
+  color: var(--canopy-text-secondary);
+}
+
+.collections-popover__label .collection-badge {
+  display: inline-flex;
+  flex: none;
+  color: var(--canopy-text-secondary);
+}
+
+.collections-popover__actions {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.25rem;
+}
+
+.collections-popover__description {
+  margin: 0 0 0.25rem;
+  padding-inline-start: 1.5rem;
+  font-size: var(--canopy-text-sm);
+  color: var(--canopy-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.collections-popover__description--clamp {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.collections-popover__row:hover {
+  background: var(--canopy-hover-tint);
+}
+
+.collections-popover__check {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+}
+
+.collections-popover__open-all {
+  flex: none;
+  font-size: var(--canopy-text-sm);
+}
+
+.collections-popover__empty {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  font-size: var(--canopy-text-md);
+  color: var(--canopy-text-secondary);
+}
+
+.collections-popover__footer {
+  margin-block-start: 0.25rem;
+  padding: 0.5rem 1rem 0;
+  border-block-start: 1px solid var(--canopy-border);
+}
+
+.collections-popover__save {
+  font-size: var(--canopy-text-md);
+}

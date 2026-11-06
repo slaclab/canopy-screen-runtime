@@ -1,0 +1,95 @@
+/* The "Plot in Data Browser" chooser. */
+
+.plot-pvs__intro {
+  margin-bottom: 0.75rem;
+}
+
+.plot-pvs__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+  color: var(--canopy-text-secondary);
+  font-size: var(--canopy-text-sm);
+}
+
+.plot-pvs__clear {
+  padding: 0 0.25rem;
+  border: 0;
+  background: transparent;
+  color: var(--canopy-accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.plot-pvs__clear:disabled {
+  color: color-mix(in srgb, var(--canopy-text-muted) 50%, var(--canopy-bg-panel));
+  cursor: default;
+}
+
+.plot-pvs__clear:focus-visible {
+  outline: 2px solid var(--canopy-focus);
+}
+
+.plot-pvs__list {
+  max-height: min(24rem, 50vh);
+  overflow-y: auto;
+  border: 1px solid var(--canopy-border);
+  padding: 0.25rem 0.5rem;
+}
+
+.plot-pvs__group {
+  margin: 0 0 0.25rem;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.plot-pvs__legend {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  width: 100%;
+  margin-top: 0.5rem;
+  overflow: hidden;
+  font-size: var(--canopy-text-sm);
+  font-weight: 600;
+  color: var(--canopy-text-primary);
+  white-space: nowrap;
+}
+
+.plot-pvs__detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 400;
+  color: var(--canopy-text-muted);
+}
+
+.plot-pvs__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.plot-pvs__row .cds--form-item {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.plot-pvs__row .cds--checkbox-label-text {
+  overflow-wrap: anywhere;
+}
+
+.plot-pvs__role {
+  flex: none;
+  color: var(--canopy-text-muted);
+  font-size: calc(var(--canopy-text-sm) - 0.0625rem);
+}
+
+.plot-pvs__empty {
+  padding: 0.5rem 0;
+  color: var(--canopy-text-muted);
+}
