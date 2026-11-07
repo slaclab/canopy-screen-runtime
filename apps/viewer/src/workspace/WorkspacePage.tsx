@@ -233,6 +233,7 @@ import {
   configuredTools,
   instanceLabel,
   isToolKey,
+  onlyViewerParams,
   toolConfig,
   toolLabel,
   toolOf,
@@ -567,9 +568,15 @@ export function WorkspacePage({ screensBaseUrl, config }: WorkspacePageProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlKey, here]);
 
-  // Refused at mount: with chrome the active tab's URL is written anyway.
+  // Refused at mount: with chrome the active tab's URL is written anyway;
+  // without it, of the URL's query only the viewer's own parameters stay.
   useEffect(() => {
-    if (!chrome && mountNotice !== null) restoreUrl();
+    if (chrome || mountNotice === null) return;
+    const kept = onlyViewerParams(window.location.search.slice(1));
+    void navigateRef.current(
+      { pathname: '/embed/', search: kept === '' ? '' : `?${kept}` },
+      { replace: true }
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -15,6 +15,7 @@ import { EmbedThemeContext } from '../pages/EmbedPage.js';
 import { ZoomProvider } from '../ZoomContext.js';
 import { NAVIGATE_MESSAGE } from './host/useHostNavigation.js';
 import { EMPTY_TABS, type TabsState, tabsReducer, tabsStorageKey } from './tabs.js';
+import { onlyViewerParams, withoutViewerParams } from './tools.js';
 import { traceSrc } from './TraceTab.js';
 import { WorkspacePage } from './WorkspacePage.js';
 import { MAX_OPEN_TABS } from './workspacePrecheck.js';
@@ -296,6 +297,15 @@ describe('traceSrc', () => {
     await settle();
     expect(frameUrl().searchParams.getAll('theme')).toEqual(['dark']);
     expect(frameUrl().searchParams.getAll('embedded')).toEqual(['true']);
+  });
+});
+
+describe('onlyViewerParams', () => {
+  it('keeps what withoutViewerParams drops, in its own bytes', () => {
+    const query = 'pv=SR:A&%74heme=light&the\tme=dark&_canopyChrome=0&embedded=true&range=-1h';
+    expect(onlyViewerParams(query)).toBe('%74heme=light&theme=dark&_canopyChrome=0&embedded=true');
+    expect(withoutViewerParams(query)).toBe('pv=SR:A&range=-1h');
+    expect(onlyViewerParams('pv=SR:A')).toBe('');
   });
 });
 
@@ -584,16 +594,14 @@ describe('a tool URL at first load, framed by a same-origin host', () => {
     expect(stored().keys).toEqual(['bts/knob']);
   });
 
-  it('without chrome a refused query opens no tab and shows the notice', async () => {
-    const search = `?${pvs(13)}&_canopyChrome=0`;
+  it('without chrome a refused query opens no tab, shows the notice and leaves the URL', async () => {
+    const search = `?theme=light&${pvs(13)}&_canopyChrome=0`;
     window.history.replaceState(null, '', `/embed/@trace${search}`);
     try {
       renderAt(`/embed/@trace${search}`);
       await waitFor(() => expect(notice()).toContain('Data Browser'));
-      // No @tool path is left, so the query that stays in the URL cannot open anything.
-      await waitFor(() => expect(here()).toBe(`/embed/${search}`));
+      await waitFor(() => expect(here()).toBe('/embed/?theme=light&_canopyChrome=0'));
       expect(document.querySelector('iframe.workspace-trace')).toBeNull();
-      expect(toolUrlOf(here())).toBeNull();
     } finally {
       window.history.replaceState(null, '', '/');
     }

@@ -164,15 +164,37 @@ const VIEWER_PARAMS: ReadonlySet<string> = new Set(['embedded', 'theme', 'mode',
  * never reach it. The other pairs keep their exact bytes.
  */
 export function withoutViewerParams(query: string): string {
+  return urlPairs(query)
+    .filter((pair) => {
+      const name = pairName(pair);
+      return name !== undefined && !isViewerParam(name);
+    })
+    .join('&');
+}
+
+/** `query` with only the viewer's own parameters, read as withoutViewerParams reads it. */
+export function onlyViewerParams(query: string): string {
+  return urlPairs(query)
+    .filter((pair) => {
+      const name = pairName(pair);
+      return name !== undefined && isViewerParam(name);
+    })
+    .join('&');
+}
+
+function urlPairs(query: string): string[] {
   return query
     .replace(/[\t\r\n]/g, '')
     .replace(/#/g, '%23')
-    .split('&')
-    .filter((pair) => {
-      const name = new URLSearchParams(pair).keys().next().value;
-      return name !== undefined && !VIEWER_PARAMS.has(name) && !name.startsWith('_canopy');
-    })
-    .join('&');
+    .split('&');
+}
+
+function pairName(pair: string): string | undefined {
+  return new URLSearchParams(pair).keys().next().value;
+}
+
+function isViewerParam(name: string): boolean {
+  return VIEWER_PARAMS.has(name) || name.startsWith('_canopy');
 }
 
 /**
