@@ -19,6 +19,11 @@
 //              values of the tool's `pvKey` (read as URLSearchParams does,
 //              '+' a space), and the tool's own readability check (Trace: a
 //              range react-trace reads). The 4 KB bound is canopy_mcp's.
+//   host       a query a host hands over in a tool URL (workspaceUrl.ts) names
+//              only the tool's `hostQueryParams`; a tool without them takes none.
+//   frame      `embedded`, `theme`, `mode`, `hostbar` and `_canopy*` belong to the
+//              viewer and its frames: withoutViewerParams keeps them out of a
+//              tool's query, whatever spelling they arrive in.
 
 import type { ToolConfig, ViewerConfig } from '../config.js';
 import { isTraceQuery } from '../config.js';
@@ -45,6 +50,8 @@ export interface ToolSpec {
   maxPvs?: number;
   /** An agent's query beyond isValidQuery and the PV cap, judged at `nowMs` (epoch ms). */
   isReadableQuery?: (query: string, nowMs: number) => boolean;
+  /** The only parameter names a host's tool URL may carry (absent: it may not name this tool). */
+  hostQueryParams?: readonly string[];
 }
 
 /** A saved view's kind when it has none: the data browser's. */
@@ -124,6 +131,7 @@ export const TOOLS: readonly ToolSpec[] = Object.freeze([
     pvKey: 'pv',
     maxPvs: 12,
     isReadableQuery: isReadableTraceRange,
+    hostQueryParams: ['pv', 'range', 'from', 'to'],
   },
   {
     id: 'correlation',
@@ -146,6 +154,56 @@ export const TOOLS: readonly ToolSpec[] = Object.freeze([
     maxPvs: 8,
   },
 ]);
+
+const VIEWER_PARAMS: ReadonlySet<string> = new Set(['embedded', 'theme', 'mode', 'hostbar']);
+
+/**
+ * `query` without the viewer's own parameters, each name compared decoded
+ * (`%74heme=` is `theme`) and as `new URL` will read it: the URL parser drops
+ * tab, CR and LF (`the\tme=` is `theme`) and ends the query at `#`, so those
+ * never reach it. The other pairs keep their exact bytes.
+ */
+export function withoutViewerParams(query: string): string {
+  return urlPairs(query)
+    .filter((pair) => {
+      const name = pairName(pair);
+      return name !== undefined && !isViewerParam(name);
+    })
+    .join('&');
+}
+
+/** `query` with only the viewer's own parameters, read as withoutViewerParams reads it. */
+export function onlyViewerParams(query: string): string {
+  return urlPairs(query)
+    .filter((pair) => {
+      const name = pairName(pair);
+      return name !== undefined && isViewerParam(name);
+    })
+    .join('&');
+}
+
+function urlPairs(query: string): string[] {
+  return query
+    .replace(/[\t\r\n]/g, '')
+    .replace(/#/g, '%23')
+    .split('&');
+}
+
+function pairName(pair: string): string | undefined {
+  return new URLSearchParams(pair).keys().next().value;
+}
+
+function isViewerParam(name: string): boolean {
+  return VIEWER_PARAMS.has(name) || name.startsWith('_canopy');
+}
+
+/**
+ * One query in one form, for comparing spellings (`pv=SR:A`, `pv=SR%3AA`): no
+ * viewer parameters, its decoded pairs in their order, one encoding.
+ */
+export function canonicalQuery(query: string): string {
+  return new URLSearchParams(withoutViewerParams(query)).toString();
+}
 
 /** The distinct non-blank values of `key` in `query` (URLSearchParams reading). */
 export function distinctValues(query: string, key: string): number {
