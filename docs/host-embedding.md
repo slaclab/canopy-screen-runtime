@@ -90,8 +90,8 @@ chosen entry's id as `value`.
 A tool URL `/embed/@<tool>?<query>` opens that query in a tab only when the host
 hands it over: by this message, or as the first load of a frame whose parent is
 same-origin (a host falls back to loading `src` until the viewer is ready). The
-tab already showing the query takes focus, else a new instance opens with it; no
-instance's stored query changes. On a top-level load the query is ignored, because
+tab already showing the query, in any encoding, takes focus, else a new instance
+opens with it; no instance's stored query changes. On a top-level load the query is ignored, because
 a page URL can come from anyone and must not choose what a tool shows or overwrite
 a stored instance.
 
@@ -99,7 +99,7 @@ a stored instance.
 never part of a tool's query, in any spelling. Only `@trace` takes a query, naming
 only `pv`, `range`, `from` and `to`. A query outside that, or one an agent could
 not send (at most 12 PVs and a range the Data Browser can read), or a tool at its
-10 instances, opens nothing and shows the workspace's notice. The active tab's URL,
+10 instances, or a workspace at its 50 tabs, opens nothing and shows the workspace's notice. The active tab's URL,
 never a query, is what the viewer then shows, so a reload opens nothing again.
 
 ### Focus exit (any framed viewer)

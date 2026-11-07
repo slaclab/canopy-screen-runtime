@@ -14,10 +14,11 @@ import type { ViewerConfig } from '../config.js';
 import { EmbedThemeContext } from '../pages/EmbedPage.js';
 import { ZoomProvider } from '../ZoomContext.js';
 import { NAVIGATE_MESSAGE } from './host/useHostNavigation.js';
-import { tabsStorageKey } from './tabs.js';
+import { EMPTY_TABS, type TabsState, tabsReducer, tabsStorageKey } from './tabs.js';
 import { traceSrc } from './TraceTab.js';
 import { WorkspacePage } from './WorkspacePage.js';
-import { framedBySameOrigin, toolUrlOf } from './workspaceUrl.js';
+import { MAX_OPEN_TABS } from './workspacePrecheck.js';
+import { framedBySameOrigin, toolUrlOf, toolUrlOutcome } from './workspaceUrl.js';
 
 // Node 26's global localStorage is unusable without --localstorage-file and
 // shadows jsdom's; an in-memory Storage stands in (as in WorkspacePage.test).
@@ -248,12 +249,31 @@ describe('traceSrc', () => {
     'embe%64ded=false',
     'hostbar=1',
     'hostb%61r=1',
+    'the\tme=evil',
+    'em\nbedded=false',
+    'host\rbar=1',
+    'theme\t=evil',
   ])('a stored query with %s cannot override the viewer', (pair) => {
     const src = new URL(traceSrc('trace/', `pv=A&${pair}`, 'dark'));
     expect(src.searchParams.getAll('theme')).toEqual(['dark']);
     expect(src.searchParams.getAll('embedded')).toEqual(['true']);
     expect(src.searchParams.has('hostbar')).toBe(false);
     expect(src.searchParams.getAll('pv')).toEqual(['A']);
+  });
+
+  it("a '#' stays in the query, so the viewer's parameters do not land in the fragment", () => {
+    const src = new URL(traceSrc('trace/', 'pv=A#x&the#me=evil', 'dark', 'dark', true));
+    expect(src.hash).toBe('');
+    expect(src.searchParams.getAll('pv')).toEqual(['A#x']);
+    expect(src.searchParams.getAll('the#me')).toEqual(['evil']);
+    expect(src.searchParams.getAll('theme')).toEqual(['dark']);
+    expect(src.searchParams.getAll('embedded')).toEqual(['true']);
+    expect(src.searchParams.getAll('hostbar')).toEqual(['1']);
+  });
+
+  it('a tab or line break inside a value is read as the URL parser reads it', () => {
+    const src = new URL(traceSrc('trace/', 'pv=A\tB\n', 'dark'));
+    expect(src.searchParams.getAll('pv')).toEqual(['AB']);
   });
 
   it("keeps the rest of the query's bytes", () => {
@@ -276,6 +296,58 @@ describe('traceSrc', () => {
     await settle();
     expect(frameUrl().searchParams.getAll('theme')).toEqual(['dark']);
     expect(frameUrl().searchParams.getAll('embedded')).toEqual(['true']);
+  });
+});
+
+describe('toolUrlOutcome', () => {
+  const opened = (...queries: string[]): TabsState =>
+    queries.reduce<TabsState>(
+      (tabs, query) => tabsReducer(tabs, { type: 'newInstance', tool: 'trace', query }),
+      EMPTY_TABS
+    );
+  const wanted = { tool: 'trace', query: QUERY_A };
+  const outcome = (tabs: TabsState, defaultQuery?: string) =>
+    toolUrlOutcome(tabs, wanted, ['trace'], defaultQuery, Date.now());
+
+  it.each(['pv=SR:A&range=-1h', QUERY_A, 'pv=SR%3aA&range=-1h', 'pv=SR:A&range=-1h&theme=dark'])(
+    'a stored %s is the same query',
+    (query) => {
+      const tabs = opened('pv=OTHER', query);
+      expect(outcome(tabs)).toEqual({ action: { type: 'focus', key: '@trace/2' } });
+      expect(tabs.instances['@trace/2']?.query).toBe(query);
+    }
+  );
+
+  it('the same pairs in another order are another query', () => {
+    expect(outcome(opened('range=-1h&pv=SR:A'))).toEqual({
+      action: { type: 'newInstance', tool: 'trace', query: QUERY_A },
+    });
+  });
+
+  it('a default query with a colon is the same query as its hand-off', () => {
+    const tabs = tabsReducer(EMPTY_TABS, { type: 'openTool', tool: 'trace' });
+    expect(outcome(tabs, 'pv=SR:A&range=-1h')).toEqual({
+      action: { type: 'focus', key: '@trace' },
+    });
+  });
+
+  it('the most recently used of two spellings takes focus', () => {
+    const tabs = tabsReducer(opened('pv=SR:A&range=-1h', QUERY_A, 'pv=OTHER'), {
+      type: 'focus',
+      key: '@trace',
+    });
+    expect(outcome(tabs)).toEqual({ action: { type: 'focus', key: '@trace' } });
+  });
+
+  it('at the tab limit a new query opens nothing; a query already showing still focuses', () => {
+    const full: TabsState = {
+      ...opened(QUERY_A),
+      keys: ['@trace', ...Array.from({ length: MAX_OPEN_TABS - 1 }, (_, i) => `bts/s${i}`)],
+    };
+    expect(
+      toolUrlOutcome(full, { tool: 'trace', query: QUERY_B }, ['trace'], undefined, 0)
+    ).toEqual({ notice: `At most ${MAX_OPEN_TABS} open tabs; nothing opened` });
+    expect(outcome(full)).toEqual({ action: { type: 'focus', key: '@trace' } });
   });
 });
 
@@ -307,6 +379,43 @@ describe('a tool URL by host message', () => {
     await waitFor(() => expect(stored().active).toBe('@trace'));
     expect(stored().keys).toEqual(['bts/knob', '@trace', '@trace/2']);
     await waitFor(() => expect(here()).toBe('/embed/@trace'));
+  });
+
+  it('a stored tab with readable colons takes focus and keeps its spelling', async () => {
+    const raw = 'pv=SR:A&range=-1h';
+    sessionStorage.setItem(
+      tabsStorageKey('/'),
+      JSON.stringify({
+        keys: ['bts/knob', '@trace'],
+        active: 'bts/knob',
+        instances: { '@trace': { query: raw } },
+        toolMru: ['@trace'],
+      })
+    );
+    renderAt('/embed/bts/knob');
+    await screen.findByTestId('screen-probe');
+    send(`/embed/@trace?${QUERY_A}`);
+    await waitFor(() => expect(here()).toBe('/embed/@trace'));
+    expect(stored().keys).toEqual(['bts/knob', '@trace']);
+    expect(stored().instances['@trace']?.query).toBe(raw);
+  });
+
+  it('two identical messages before a commit open one tab', async () => {
+    renderAt('/embed/bts/knob');
+    await screen.findByTestId('screen-probe');
+    act(() => {
+      for (let i = 0; i < 2; i += 1) {
+        window.dispatchEvent(
+          new MessageEvent('message', {
+            data: { type: NAVIGATE_MESSAGE, url: `/embed/@trace?${QUERY_A}` },
+            source: window.parent,
+            origin: window.location.origin,
+          })
+        );
+      }
+    });
+    await waitFor(() => expect(here()).toBe('/embed/@trace'));
+    expect(stored().keys).toEqual(['bts/knob', '@trace']);
   });
 
   it('the query of the tab already active changes nothing', async () => {
@@ -360,6 +469,8 @@ describe('a tool URL by host message', () => {
     ['an unreadable range', 'pv=SR:A&range=soon'],
     ['an unknown parameter', 'pv=SR:A&evil=1'],
     ['a parameter Trace reads but a host may not name', 'pv=SR:A&plot=%7B%7D'],
+    ['a value that does not decode', 'pv=%E0'],
+    ['a stray percent sign', 'pv=100%'],
   ])('%s opens nothing, keeps the URL and shows the notice', async (_label, query) => {
     renderAt('/embed/bts/knob');
     await screen.findByTestId('screen-probe');
@@ -471,6 +582,21 @@ describe('a tool URL at first load, framed by a same-origin host', () => {
     await waitFor(() => expect(notice()).toContain('Data Browser'));
     await waitFor(() => expect(here()).toBe('/embed/bts/knob'));
     expect(stored().keys).toEqual(['bts/knob']);
+  });
+
+  it('without chrome a refused query opens no tab and shows the notice', async () => {
+    const search = `?${pvs(13)}&_canopyChrome=0`;
+    window.history.replaceState(null, '', `/embed/@trace${search}`);
+    try {
+      renderAt(`/embed/@trace${search}`);
+      await waitFor(() => expect(notice()).toContain('Data Browser'));
+      // No @tool path is left, so the query that stays in the URL cannot open anything.
+      await waitFor(() => expect(here()).toBe(`/embed/${search}`));
+      expect(document.querySelector('iframe.workspace-trace')).toBeNull();
+      expect(toolUrlOf(here())).toBeNull();
+    } finally {
+      window.history.replaceState(null, '', '/');
+    }
   });
 
   it("a later plain host link to that URL still navigates: the write is seen as the workspace's own", async () => {

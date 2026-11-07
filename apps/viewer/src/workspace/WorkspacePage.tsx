@@ -1362,6 +1362,8 @@ export function WorkspacePage({ screensBaseUrl, config }: WorkspacePageProps) {
         console.warn(`Workspace: ${outcome.notice}.`);
         setNotice(outcome.notice);
       } else {
+        // The next message may arrive before this one commits.
+        stateRef.current = tabsReducer(stateRef.current, outcome.action);
         dispatch(outcome.action);
       }
     },

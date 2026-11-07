@@ -11,9 +11,11 @@ import {
   tabKey,
   toolProblem,
 } from './tabs.js';
-import { instanceShowing } from './workspacePrecheck.js';
+import { isDecodableQuery } from './traceQuery.js';
+import { MAX_OPEN_TABS, instanceShowing } from './workspacePrecheck.js';
 import {
   MAX_TOOL_INSTANCES,
+  canonicalQuery,
   isAgentQuery,
   parseToolKey,
   toolKey,
@@ -105,17 +107,33 @@ export function toolUrlOf(url: string): ToolUrl | null {
     return null;
   }
   const tool = parseToolKey(key)?.tool;
-  const query = new URLSearchParams(withoutViewerParams(match[2]!)).toString();
+  const kept = withoutViewerParams(match[2]!);
+  // A query that does not decode stays as it came, for isAgentQuery to refuse:
+  // URLSearchParams would turn it into a query that does.
+  const query = isDecodableQuery(kept) ? canonicalQuery(kept) : kept;
   return tool === undefined || query === '' ? null : { tool, query };
+}
+
+/** `tabs` with its queries canonical, to compare with a hand-off's; nothing stores this copy. */
+function withCanonicalQueries(tabs: TabsState): TabsState {
+  const instances = Object.fromEntries(
+    Object.entries(tabs.instances).map(([key, instance]) => [
+      key,
+      typeof instance.query === 'string'
+        ? { ...instance, query: canonicalQuery(instance.query) }
+        : instance,
+    ])
+  );
+  return { ...tabs, instances };
 }
 
 /**
  * What a host's tool URL does, by the rules of the agent's open_tool: the tab
- * already showing the query takes focus, else a new instance opens with it, so
+ * already showing the query, in any encoding, takes focus, else a new instance opens with it, so
  * no instance's stored query ever changes. Refused, with the notice to show: a
  * tool this viewer has not configured or that takes no host query, a parameter
- * outside the tool's hostQueryParams, a query an agent could not send, and a
- * tool at its instance cap. `defaultQuery` is what an instance with no query
+ * outside the tool's hostQueryParams, a query an agent could not send, a tool
+ * at its instance cap, and a workspace at its tab limit. `defaultQuery` is what an instance with no query
  * of its own shows.
  */
 export function toolUrlOutcome(
@@ -135,10 +153,18 @@ export function toolUrlOutcome(
   ) {
     return { notice: `${toolLabel(tool)}: the URL's query is not valid; nothing opened` };
   }
-  const showing = instanceShowing(tabs, tool, query, defaultQuery);
+  const showing = instanceShowing(
+    withCanonicalQueries(tabs),
+    tool,
+    query,
+    defaultQuery === undefined ? undefined : canonicalQuery(defaultQuery)
+  );
   if (showing !== null) return { action: { type: 'focus', key: showing } };
   if (instancesOf(tabs, tool).length >= MAX_TOOL_INSTANCES) {
     return { notice: `At most ${MAX_TOOL_INSTANCES} ${toolLabel(tool)} tabs; nothing opened` };
+  }
+  if (tabs.keys.length >= MAX_OPEN_TABS) {
+    return { notice: `At most ${MAX_OPEN_TABS} open tabs; nothing opened` };
   }
   return { action: { type: 'newInstance', tool, query } };
 }

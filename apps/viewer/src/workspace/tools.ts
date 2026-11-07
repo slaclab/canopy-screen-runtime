@@ -159,16 +159,28 @@ const VIEWER_PARAMS: ReadonlySet<string> = new Set(['embedded', 'theme', 'mode',
 
 /**
  * `query` without the viewer's own parameters, each name compared decoded
- * (`%74heme=` is `theme`). The other pairs keep their exact bytes.
+ * (`%74heme=` is `theme`) and as `new URL` will read it: the URL parser drops
+ * tab, CR and LF (`the\tme=` is `theme`) and ends the query at `#`, so those
+ * never reach it. The other pairs keep their exact bytes.
  */
 export function withoutViewerParams(query: string): string {
   return query
+    .replace(/[\t\r\n]/g, '')
+    .replace(/#/g, '%23')
     .split('&')
     .filter((pair) => {
       const name = new URLSearchParams(pair).keys().next().value;
       return name !== undefined && !VIEWER_PARAMS.has(name) && !name.startsWith('_canopy');
     })
     .join('&');
+}
+
+/**
+ * One query in one form, for comparing spellings (`pv=SR:A`, `pv=SR%3AA`): no
+ * viewer parameters, its decoded pairs in their order, one encoding.
+ */
+export function canonicalQuery(query: string): string {
+  return new URLSearchParams(withoutViewerParams(query)).toString();
 }
 
 /** The distinct non-blank values of `key` in `query` (URLSearchParams reading). */
