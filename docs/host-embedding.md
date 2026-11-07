@@ -87,6 +87,15 @@ chosen entry's id as `value`.
 | `canopy-host-navigate-probe`   | host → viewer | Asks for `canopy-host-navigate-ready`.                                                                                                               |
 | `canopy-host-navigate` `{url}` | host → viewer | Navigate in place. `url` must be same-origin and under the viewer's mount; `?_canopyOpen=<ref>` opens that collection, any other path opens its tab. |
 
+A tool URL `/embed/@<tool>?<query>` opens that query in a tab, by this message
+or as the frame's first load, with the rules of the agent's `open_tool`: the tab
+already showing the query takes focus, else a new instance opens with it.
+`embedded`, `theme`, `mode` and `_canopy*` are the viewer's own and not part of
+the query. A query an agent could not send (at most 12 PVs and a range the Data
+Browser can read, for `@trace`), or a tool at its 10 instances, opens nothing
+and shows the workspace's notice. Either way the viewer then replaces the URL
+with the active tab's, so a reload opens nothing again.
+
 ### Focus exit (any framed viewer)
 
 **`canopy-host-focus-exit`** `{direction: "backward" | "forward"}` (viewer → host)

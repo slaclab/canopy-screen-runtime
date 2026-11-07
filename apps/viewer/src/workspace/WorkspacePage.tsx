@@ -17,6 +17,9 @@
 //                changed.
 //   mount set    mountSet.tsx: which screens stay mounted, and what each
 //                showing screen reports (title, zoom, open screen).
+//   tool URL     /embed/@<tool>?<query> focuses the tab showing that query or
+//                opens one (workspaceUrl.ts), by message and at first load; the
+//                active tab's URL then replaces it.
 //   tools        tools.ts, TraceTab.tsx: every open tool instance stays
 //                mounted while it is open, keyed `<key>:<epoch>:<binding
 //                generation>` inside its stable item, and is never moved (a
@@ -159,7 +162,7 @@ import {
   barPlacement,
 } from './tileHeaders.js';
 import { useWorkspaceManifest } from './useWorkspaceManifest.js';
-import { keyForUrl, urlForKey } from './workspaceUrl.js';
+import { keyForUrl, toolUrlOf, toolUrlOutcome, urlForKey } from './workspaceUrl.js';
 import { createDock } from './dock/createDock.js';
 import { DockOverlay, DockOverlayItem } from './dock/DockOverlay.js';
 import { DropPreview } from './dock/DropPreview.js';
@@ -359,6 +362,9 @@ export function WorkspacePage({ screensBaseUrl, config }: WorkspacePageProps) {
   const trace = config?.trace;
   const tools = useMemo(() => configuredTools(config), [config]);
   const urlKey = keyForUrl(location.pathname + location.search);
+  // /embed/@<tool>?<query>: a tab showing that query, not the tool's first instance.
+  const toolUrl = toolUrlOf(location.pathname + location.search);
+  const toolUrlQuery = toolUrl?.query ?? null;
 
   // Latched at first render: later URL writes drop the reserved parameters.
   const [latched] = useState(() => {
@@ -384,28 +390,52 @@ export function WorkspacePage({ screensBaseUrl, config }: WorkspacePageProps) {
   // The restored keys (the stored tabs) and the URL's key are latched too:
   // Recent records the URL's screen at mount only when restore did not bring
   // it back (a fresh `src` navigation, not a reload).
-  const [{ initial, restoredKeys, mountUrlKey }] = useState(() => {
+  // A tool URL with a query brings its own tab, so no data browser joins it
+  // unless it is refused.
+  const [{ initial, restoredKeys, mountUrlKey, mountNotice }] = useState(() => {
     const stored = chrome ? readTabs(basename) : EMPTY_TABS;
-    return {
-      initial: planDockLoad({
+    const plan = (key: string | null, suppressFirstVisit: boolean) =>
+      planDockLoad({
         chrome,
         basename,
         stored,
-        urlKey,
+        urlKey: key,
         tools,
         newSession: !hasStoredTabs(basename),
-        // A deep link brings its own members: no data browser joins them.
-        suppressFirstVisit: latched.open !== null,
+        suppressFirstVisit,
         homeOnFirstOpen,
         // Chrome off: one tile, no dock; the reducer refuses drops and arrangements.
         ...(chrome ? {} : { oneTile: true }),
-      }),
+      });
+    // A deep link brings its own members: no data browser joins them.
+    const deepLink = latched.open !== null;
+    let loaded = plan(toolUrl === null ? urlKey : null, deepLink || toolUrl !== null);
+    let toolNotice: string | null = null;
+    if (toolUrl !== null) {
+      const outcome = toolUrlOutcome(
+        loaded.state,
+        toolUrl,
+        tools,
+        toolConfig(config, toolUrl.tool)?.query,
+        Date.now()
+      );
+      if ('notice' in outcome) {
+        toolNotice = outcome.notice;
+        loaded = plan(null, deepLink);
+      } else {
+        loaded = { ...loaded, state: tabsReducer(loaded.state, outcome.action) };
+      }
+    }
+    return {
+      initial: loaded,
       restoredKeys: stored.keys,
       // Without chrome nothing is stored, so a reload cannot be told apart: no record.
       mountUrlKey: chrome ? urlKey : null,
+      mountNotice: toolNotice,
     };
   });
   const [state, dispatch] = useReducer(tabsReducer, initial.state);
+  const [notice, setNotice] = useState<string | null>(mountNotice);
 
   const warned = useRef(false);
   useEffect(() => {
@@ -494,13 +524,17 @@ export function WorkspacePage({ screensBaseUrl, config }: WorkspacePageProps) {
   }, [chrome, writeUrl]);
 
   // A URL the workspace did not write (a link, a host navigation) opens its
-  // tab; a tool instance that cannot open warns and restores the URL.
+  // tab; a tool instance that cannot open warns and restores the URL. A tool
+  // URL with a query takes open_tool's path (toolUrlOutcome): whatever it does,
+  // the active tab's URL replaces it, so a reload opens nothing again.
   const lastUrlKey = useRef(urlKey);
+  const lastToolUrlQuery = useRef(toolUrlQuery);
   // Recent's choke point, set once the collections hook exists (below).
   const recordUrlOpen = useRef<(key: string) => void>(() => {});
   useEffect(() => {
-    if (urlKey === lastUrlKey.current) return;
+    if (urlKey === lastUrlKey.current && toolUrlQuery === lastToolUrlQuery.current) return;
     lastUrlKey.current = urlKey;
+    lastToolUrlQuery.current = toolUrlQuery;
     const echo = ownWrites.current.indexOf(here);
     if (echo >= 0) {
       // The workspace's own write coming back (earlier unseen ones are dropped
@@ -512,6 +546,28 @@ export function WorkspacePage({ screensBaseUrl, config }: WorkspacePageProps) {
     if (urlKey === null) return;
     // An outside navigation (a link, a host or agent open) is history (Recent).
     recordUrlOpen.current(urlKey);
+    if (toolUrl !== null) {
+      const outcome = toolUrlOutcome(
+        state,
+        toolUrl,
+        tools,
+        toolConfig(config, toolUrl.tool)?.query,
+        Date.now()
+      );
+      if ('notice' in outcome) {
+        console.warn(`Workspace: ${outcome.notice}.`);
+        // The refusal is known only once the outside URL has landed.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setNotice(outcome.notice);
+        restoreUrl();
+      } else if (outcome.action.type === 'focus' && outcome.action.key === state.active) {
+        // No tab change will write the URL.
+        if (chrome) restoreUrl();
+      } else {
+        dispatch(outcome.action);
+      }
+      return;
+    }
     if (urlKey === state.active) return;
     if (urlKey.startsWith('@')) {
       const problem =
@@ -527,7 +583,13 @@ export function WorkspacePage({ screensBaseUrl, config }: WorkspacePageProps) {
     }
     dispatch({ type: 'open', key: urlKey, mode: 'append' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlKey]);
+  }, [urlKey, toolUrlQuery]);
+
+  // Refused at mount: with chrome the active tab's URL is written anyway.
+  useEffect(() => {
+    if (!chrome && mountNotice !== null) restoreUrl();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // A single-segment /embed/<seg> that is not a configured tool names no tab
   // (a category alone, a tool not served here): back to the active tab's URL,
@@ -536,7 +598,7 @@ export function WorkspacePage({ screensBaseUrl, config }: WorkspacePageProps) {
   const pathname = location.pathname;
   useEffect(() => {
     const single = /^\/embed\/([^/]+)\/?$/.exec(pathname);
-    if (!single) return;
+    if (!single || toolUrl !== null) return;
     const key = keyForUrl(pathname);
     if (key !== null && toolProblem(key, tools) === null) return;
     restoreUrl();
@@ -816,7 +878,6 @@ export function WorkspacePage({ screensBaseUrl, config }: WorkspacePageProps) {
   useShortcuts(shortcutKeys, onShortcut);
 
   const [viewError, setViewError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
 
   // The query an instance shows: its own, else its tool's config default.
   const instanceQuery = (key: string): string =>
