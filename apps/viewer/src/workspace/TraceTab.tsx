@@ -48,7 +48,7 @@ import type { CSSProperties } from 'react';
 import { HOST_THEME_ID } from '@slaclab/canopy-shell';
 import type { ThemeName } from '../config.js';
 import { useHostCapabilities } from './host/hostCapabilities.js';
-import { DEFAULT_TOOL, toolSpec } from './tools.js';
+import { DEFAULT_TOOL, toolSpec, withoutViewerParams } from './tools.js';
 import { SAVE_VIEW, TOOL_ACTIONS, parseToolActions, toolActionsStore } from './toolActionsStore.js';
 import type { ToolActionsStore } from './toolActionsStore.js';
 import type { ToolSpec } from './tools.js';
@@ -106,7 +106,8 @@ export interface TraceTabProps {
  * `theme` reaches the URL only when it is a well-formed host theme id; any
  * other value could carry its own `&key=value` pairs into the frame's query
  * (the viewer URL it comes from is not trusted), so the mode stands in.
- * `hostBar` (the host owns the header) appends `hostbar=1`.
+ * `hostBar` (the host owns the header) appends `hostbar=1`. A stored or
+ * reported query never carries the viewer's own parameters, so these values win.
  */
 export function traceSrc(
   path: string,
@@ -115,7 +116,8 @@ export function traceSrc(
   mode: ThemeName = 'dark',
   hostBar = false
 ): string {
-  const prefix = query ? `${query}&` : '';
+  const kept = withoutViewerParams(query);
+  const prefix = kept ? `${kept}&` : '';
   const t = typeof theme === 'string' && HOST_THEME_ID.test(theme) ? theme : mode;
   const suffix = hostBar ? '&hostbar=1' : '';
   return new URL(`${path}?${prefix}theme=${t}&embedded=true${suffix}`, document.baseURI).href;

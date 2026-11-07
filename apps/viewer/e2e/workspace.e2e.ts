@@ -831,16 +831,20 @@ test.describe('workspace Trace tab', () => {
     expect(page.frames().filter((f) => f.url().includes(TRACE_PATH))).toHaveLength(1);
   });
 
-  test('@trace restores its query; the URL theme reaches Trace @trace', async ({ page }) => {
+  test('@trace ignores URL parameters except theme; a pv= never reaches Trace @trace', async ({
+    page,
+  }) => {
     const id = probe('rules');
     await seedTabs(page, {
       keys: [],
       active: null,
       instances: { '@trace': { query: traceQuery(id) } },
     });
-    await page.goto(`${PREFIX}embed/@trace?theme=light`);
+    await page.goto(`${PREFIX}embed/@trace?pv=EVIL:PV&range=-9d&theme=light`);
     await expect(traceIframe(page)).toHaveCount(1);
     const src = (await traceIframe(page).getAttribute('src'))!;
+    expect(src).not.toContain('EVIL');
+    expect(src).not.toContain('-9d');
     expect(src).toContain(`pv=PROBE:${id}`);
     expect(src).toContain('theme=light');
     expect(src).toContain('embedded=true');

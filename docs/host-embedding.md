@@ -87,14 +87,20 @@ chosen entry's id as `value`.
 | `canopy-host-navigate-probe`   | host → viewer | Asks for `canopy-host-navigate-ready`.                                                                                                               |
 | `canopy-host-navigate` `{url}` | host → viewer | Navigate in place. `url` must be same-origin and under the viewer's mount; `?_canopyOpen=<ref>` opens that collection, any other path opens its tab. |
 
-A tool URL `/embed/@<tool>?<query>` opens that query in a tab, by this message
-or as the frame's first load, with the rules of the agent's `open_tool`: the tab
-already showing the query takes focus, else a new instance opens with it.
-`embedded`, `theme`, `mode` and `_canopy*` are the viewer's own and not part of
-the query. A query an agent could not send (at most 12 PVs and a range the Data
-Browser can read, for `@trace`), or a tool at its 10 instances, opens nothing
-and shows the workspace's notice. Either way the viewer then replaces the URL
-with the active tab's, so a reload opens nothing again.
+A tool URL `/embed/@<tool>?<query>` opens that query in a tab only when the host
+hands it over: by this message, or as the first load of a frame whose parent is
+same-origin (a host falls back to loading `src` until the viewer is ready). The
+tab already showing the query takes focus, else a new instance opens with it; no
+instance's stored query changes. On a top-level load the query is ignored, because
+a page URL can come from anyone and must not choose what a tool shows or overwrite
+a stored instance.
+
+`embedded`, `theme`, `mode`, `hostbar` and `_canopy*` are the viewer's own and are
+never part of a tool's query, in any spelling. Only `@trace` takes a query, naming
+only `pv`, `range`, `from` and `to`. A query outside that, or one an agent could
+not send (at most 12 PVs and a range the Data Browser can read), or a tool at its
+10 instances, opens nothing and shows the workspace's notice. The active tab's URL,
+never a query, is what the viewer then shows, so a reload opens nothing again.
 
 ### Focus exit (any framed viewer)
 

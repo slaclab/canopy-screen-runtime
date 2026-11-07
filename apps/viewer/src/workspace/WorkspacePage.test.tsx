@@ -956,7 +956,7 @@ describe('WorkspacePage Trace tab', () => {
   }
 
   it('mounts Trace at /embed/@trace with the config query and the embed theme', async () => {
-    renderAt('/embed/@trace', { trace: TRACE, mode: 'light' });
+    renderAt('/embed/@trace?pv=EVIL', { trace: TRACE, mode: 'light' });
     const src = new URL(iframe().src);
     expect(src.pathname.endsWith('/trace/')).toBe(true);
     expect(src.searchParams.getAll('pv')).toEqual(['A']);

@@ -1,20 +1,23 @@
-// A tool URL with a query (/embed/@<tool>?<query>), by host message and at first
-// load: it takes open_tool's path (a new query opens a tab, the same query
-// focuses it), a refused query and the instance cap open nothing and show the
-// notice, and the URL written back never reopens a tab on reload.
+// A tool URL with a query (/embed/@<tool>?<query>) is the host's hand-off: its
+// navigate message or a same-origin framed first load takes open_tool's path (a
+// new query opens a tab, the same query focuses it, no stored query changes), a
+// refused query and the instance cap open nothing and show the notice, and a
+// reload never reopens a tab. A top-level load ignores the query, as does any
+// other URL. A query never overrides the viewer's own parameters in a tool frame.
 
 import { createElement, useEffect } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, useLocation } from 'react-router-dom';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import type { Manifest } from '../api.js';
 import type { ViewerConfig } from '../config.js';
 import { EmbedThemeContext } from '../pages/EmbedPage.js';
 import { ZoomProvider } from '../ZoomContext.js';
 import { NAVIGATE_MESSAGE } from './host/useHostNavigation.js';
 import { tabsStorageKey } from './tabs.js';
+import { traceSrc } from './TraceTab.js';
 import { WorkspacePage } from './WorkspacePage.js';
-import { toolUrlOf } from './workspaceUrl.js';
+import { framedBySameOrigin, toolUrlOf } from './workspaceUrl.js';
 
 // Node 26's global localStorage is unusable without --localstorage-file and
 // shadows jsdom's; an in-memory Storage stands in (as in WorkspacePage.test).
@@ -60,9 +63,25 @@ const MANIFEST: Manifest = {
 };
 const BASE = 'https://host/screens';
 const TRACE = { path: '/trace/', query: 'pv=DEFAULT' };
-const CONFIG = { trace: TRACE } as Partial<ViewerConfig> as ViewerConfig;
-const QUERY_A = 'pv=SR:A&range=-1h';
-const QUERY_B = 'pv=SR:B&range=-1h';
+const CONFIG = {
+  trace: TRACE,
+  correlation: { path: '/correlation/', query: '' },
+} as Partial<ViewerConfig> as ViewerConfig;
+// The queries in the one encoding the viewer keeps.
+const QUERY_A = 'pv=SR%3AA&range=-1h';
+const QUERY_B = 'pv=SR%3AB&range=-1h';
+
+let host: Window;
+
+/** window.parent is `value`: a host frame, a stand-in, or window itself (top level). */
+function setParent(value: unknown) {
+  vi.spyOn(window, 'parent', 'get').mockReturnValue(value as Window & typeof globalThis);
+}
+
+/** A same-origin parent for a first load; messages then come from the real `host` frame. */
+function sameOriginParent() {
+  setParent({ location: { origin: window.location.origin }, postMessage: vi.fn() });
+}
 
 beforeEach(() => {
   vi.stubGlobal(
@@ -78,9 +97,9 @@ beforeEach(() => {
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   const frame = document.createElement('iframe');
   document.body.appendChild(frame);
-  const host = frame.contentWindow!;
+  host = frame.contentWindow!;
   host.postMessage = vi.fn() as unknown as Window['postMessage'];
-  vi.spyOn(window, 'parent', 'get').mockReturnValue(host as Window & typeof globalThis);
+  setParent(host);
 });
 
 afterEach(() => {
@@ -99,10 +118,15 @@ afterEach(() => {
 
 function LocationProbe() {
   const location = useLocation();
-  return createElement(
-    'output',
-    { 'data-testid': 'location' },
-    location.pathname + location.search
+  const navigate = useNavigate();
+  return (
+    <>
+      <output data-testid="location">{location.pathname + location.search}</output>
+      <button
+        data-testid="router-link"
+        onClick={() => void navigate('/embed/@trace?pv=EVIL:PV', { replace: true })}
+      />
+    </>
   );
 }
 
@@ -158,21 +182,36 @@ function notice(): string | null {
   return document.querySelector('.workspace__notice span')?.textContent ?? null;
 }
 
+function frameUrl(): URL {
+  const frame = document.querySelector('iframe.workspace-trace');
+  return new URL((frame as HTMLIFrameElement).src);
+}
+
 const pvs = (count: number) =>
   Array.from({ length: count }, (_, i) => `pv=SR:PV${i}`).join('&') + '&range=-1h';
 
 describe('toolUrlOf', () => {
-  it('reads the tool and the query as written', () => {
+  it('reads the tool and the query, in one encoding', () => {
+    expect(toolUrlOf('/embed/@trace?pv=SR:A&range=-1h')).toEqual({ tool: 'trace', query: QUERY_A });
     expect(toolUrlOf(`/embed/@trace?${QUERY_A}`)).toEqual({ tool: 'trace', query: QUERY_A });
     expect(toolUrlOf('/embed/@trace/?pv=A#x')).toEqual({ tool: 'trace', query: 'pv=A' });
   });
 
   it("leaves the viewer's own parameters out of the query", () => {
     expect(
-      toolUrlOf('/embed/@trace?embedded=true&pv=A&theme=dark&_canopyZoom=fit&mode=light&range=-1h')
+      toolUrlOf(
+        '/embed/@trace?embedded=true&pv=A&theme=dark&_canopyZoom=fit&mode=light&hostbar=1&range=-1h'
+      )
     ).toEqual({ tool: 'trace', query: 'pv=A&range=-1h' });
     expect(toolUrlOf('/embed/@trace?embedded=true&theme=dark')).toBeNull();
   });
+
+  it.each(['%74heme=evil', 'embe%64ded=false', 'hostb%61r=0', 'mod%65=x', '%5FcanopyZoom=9'])(
+    'leaves the encoded name %s out too',
+    (pair) => {
+      expect(toolUrlOf(`/embed/@trace?pv=A&${pair}`)).toEqual({ tool: 'trace', query: 'pv=A' });
+    }
+  );
 
   it('is null for a plain tool URL, a numbered instance, a screen and a bad key', () => {
     expect(toolUrlOf('/embed/@trace')).toBeNull();
@@ -184,11 +223,67 @@ describe('toolUrlOf', () => {
   });
 });
 
+describe('framedBySameOrigin', () => {
+  it('is true only for a same-origin parent', () => {
+    sameOriginParent();
+    expect(framedBySameOrigin()).toBe(true);
+    setParent(window);
+    expect(framedBySameOrigin()).toBe(false);
+    setParent({ location: { origin: 'https://evil.example' } });
+    expect(framedBySameOrigin()).toBe(false);
+    setParent({
+      get location() {
+        throw new DOMException('Blocked a frame', 'SecurityError');
+      },
+    });
+    expect(framedBySameOrigin()).toBe(false);
+  });
+});
+
+describe('traceSrc', () => {
+  it.each([
+    'theme=evil',
+    '%74heme=evil',
+    'embedded=false',
+    'embe%64ded=false',
+    'hostbar=1',
+    'hostb%61r=1',
+  ])('a stored query with %s cannot override the viewer', (pair) => {
+    const src = new URL(traceSrc('trace/', `pv=A&${pair}`, 'dark'));
+    expect(src.searchParams.getAll('theme')).toEqual(['dark']);
+    expect(src.searchParams.getAll('embedded')).toEqual(['true']);
+    expect(src.searchParams.has('hostbar')).toBe(false);
+    expect(src.searchParams.getAll('pv')).toEqual(['A']);
+  });
+
+  it("keeps the rest of the query's bytes", () => {
+    expect(traceSrc('trace/', 'pv=SR:A&range=-1h', 'dark')).toContain(
+      '?pv=SR:A&range=-1h&theme=dark&embedded=true'
+    );
+  });
+
+  it('a hostile stored instance reaches its frame without the override', async () => {
+    sessionStorage.setItem(
+      tabsStorageKey('/'),
+      JSON.stringify({
+        keys: ['@trace'],
+        active: '@trace',
+        instances: { '@trace': { query: 'pv=A&%74heme=evil&embe%64ded=false' } },
+        toolMru: ['@trace'],
+      })
+    );
+    renderAt('/embed/@trace');
+    await settle();
+    expect(frameUrl().searchParams.getAll('theme')).toEqual(['dark']);
+    expect(frameUrl().searchParams.getAll('embedded')).toEqual(['true']);
+  });
+});
+
 describe('a tool URL by host message', () => {
   it('a new query opens a tab and the URL becomes that tab', async () => {
     renderAt('/embed/bts/knob');
     await screen.findByTestId('screen-probe');
-    send(`/embed/@trace?${QUERY_A}`);
+    send('/embed/@trace?pv=SR:A&range=-1h');
     await waitFor(() => expect(stored().keys).toEqual(['bts/knob', '@trace']));
     expect(stored().active).toBe('@trace');
     expect(stored().instances['@trace']?.query).toBe(QUERY_A);
@@ -196,46 +291,60 @@ describe('a tool URL by host message', () => {
     send(`/embed/@trace?${QUERY_B}`);
     await waitFor(() => expect(stored().keys).toEqual(['bts/knob', '@trace', '@trace/2']));
     expect(stored().instances['@trace/2']?.query).toBe(QUERY_B);
+    // The first tab keeps its query.
+    expect(stored().instances['@trace']?.query).toBe(QUERY_A);
     await waitFor(() => expect(here()).toBe('/embed/@trace/2'));
   });
 
-  it('the same query focuses the tab showing it', async () => {
+  it('the same query focuses the tab showing it, however it is spelled', async () => {
     renderAt('/embed/bts/knob');
     await screen.findByTestId('screen-probe');
     send(`/embed/@trace?${QUERY_A}`);
     await waitFor(() => expect(here()).toBe('/embed/@trace'));
     send(`/embed/@trace?${QUERY_B}`);
     await waitFor(() => expect(here()).toBe('/embed/@trace/2'));
-    send(`/embed/@trace?${QUERY_A}`);
+    send('/embed/@trace?pv=SR:A&range=-1h');
     await waitFor(() => expect(stored().active).toBe('@trace'));
     expect(stored().keys).toEqual(['bts/knob', '@trace', '@trace/2']);
     await waitFor(() => expect(here()).toBe('/embed/@trace'));
   });
 
-  it('the query of the tab already active keeps it and restores its URL', async () => {
+  it('the query of the tab already active changes nothing', async () => {
     renderAt('/embed/bts/knob');
     await screen.findByTestId('screen-probe');
     send(`/embed/@trace?${QUERY_A}`);
     await waitFor(() => expect(here()).toBe('/embed/@trace'));
     send(`/embed/@trace?${QUERY_A}`);
-    await waitFor(() => expect(here()).toBe('/embed/@trace'));
     await settle();
     expect(here()).toBe('/embed/@trace');
     expect(stored().keys).toEqual(['bts/knob', '@trace']);
-    // The write was seen as the workspace's own: an outside link to it still works.
-    send('/embed/bts/knob');
-    await waitFor(() => expect(stored().active).toBe('bts/knob'));
-    send('/embed/@trace');
-    await waitFor(() => expect(stored().active).toBe('@trace'));
   });
 
   it('a default-query instance is the tab showing the default query', async () => {
     renderAt('/embed/@trace');
     await waitFor(() => expect(stored().keys).toEqual(['@trace']));
     send(`/embed/@trace?${TRACE.query}`);
-    await waitFor(() => expect(here()).toBe('/embed/@trace'));
     await settle();
     expect(stored().keys).toEqual(['@trace']);
+    expect(here()).toBe('/embed/@trace');
+  });
+
+  it('a stored instance on another query is left as it is', async () => {
+    sessionStorage.setItem(
+      tabsStorageKey('/'),
+      JSON.stringify({
+        keys: ['@trace'],
+        active: '@trace',
+        instances: { '@trace': { query: 'pv=KEEP' } },
+        toolMru: ['@trace'],
+      })
+    );
+    renderAt('/embed/@trace');
+    await settle();
+    send(`/embed/@trace?${QUERY_A}`);
+    await waitFor(() => expect(stored().keys).toEqual(['@trace', '@trace/2']));
+    expect(stored().instances['@trace']?.query).toBe('pv=KEEP');
+    expect(stored().instances['@trace/2']?.query).toBe(QUERY_A);
   });
 
   it('a plain tool URL still opens the first instance', async () => {
@@ -249,30 +358,42 @@ describe('a tool URL by host message', () => {
   it.each([
     ['more than 12 PVs', pvs(13)],
     ['an unreadable range', 'pv=SR:A&range=soon'],
-  ])('%s opens nothing, restores the URL and shows the notice', async (_label, query) => {
+    ['an unknown parameter', 'pv=SR:A&evil=1'],
+    ['a parameter Trace reads but a host may not name', 'pv=SR:A&plot=%7B%7D'],
+  ])('%s opens nothing, keeps the URL and shows the notice', async (_label, query) => {
     renderAt('/embed/bts/knob');
     await screen.findByTestId('screen-probe');
     send(`/embed/@trace?${query}`);
     await waitFor(() => expect(notice()).toContain('Data Browser'));
-    await waitFor(() => expect(here()).toBe('/embed/bts/knob'));
+    expect(here()).toBe('/embed/bts/knob');
     expect(stored().keys).toEqual(['bts/knob']);
     expect(stored().active).toBe('bts/knob');
   });
 
-  it('12 PVs are not refused', async () => {
+  it('12 PVs and a custom range are not refused', async () => {
     renderAt('/embed/bts/knob');
     await screen.findByTestId('screen-probe');
     send(`/embed/@trace?${pvs(12)}`);
     await waitFor(() => expect(stored().keys).toEqual(['bts/knob', '@trace']));
+    send('/embed/@trace?pv=SR:A&range=custom&from=2026-01-01T00:00&to=2026-01-02T00:00');
+    await waitFor(() => expect(stored().keys).toHaveLength(3));
     expect(notice()).toBeNull();
+  });
+
+  it('a tool that takes no host query opens nothing and shows the notice', async () => {
+    renderAt('/embed/bts/knob');
+    await screen.findByTestId('screen-probe');
+    send('/embed/@correlation?y=SR:A');
+    await waitFor(() => expect(notice()).toContain('Correlation'));
+    expect(stored().keys).toEqual(['bts/knob']);
   });
 
   it('a tool this viewer has not configured opens nothing and shows the notice', async () => {
     renderAt('/embed/bts/knob');
     await screen.findByTestId('screen-probe');
-    send('/embed/@correlation?y=SR:A');
-    await waitFor(() => expect(notice()).toContain('Correlation'));
-    await waitFor(() => expect(here()).toBe('/embed/bts/knob'));
+    send('/embed/@waveform?pv=SR:A');
+    await waitFor(() => expect(notice()).toContain('Waveform'));
+    expect(here()).toBe('/embed/bts/knob');
     expect(stored().keys).toEqual(['bts/knob']);
   });
 
@@ -280,54 +401,56 @@ describe('a tool URL by host message', () => {
     renderAt('/embed/bts/knob');
     await screen.findByTestId('screen-probe');
     for (let i = 1; i <= 10; i += 1) {
-      send(`/embed/@trace?pv=SR:${i}`);
+      send(`/embed/@trace?pv=SR${i}`);
       await waitFor(() => expect(stored().keys).toHaveLength(i + 1));
-      await waitFor(() => expect(here()).not.toContain('?'));
     }
     const full = stored().keys;
     const active = stored().active;
-    send('/embed/@trace?pv=SR:11');
-    await waitFor(() => expect(notice()).toContain('At most 10 Data Browser tabs'));
     await waitFor(() => expect(here()).toBe(`/embed/${active}`));
+    send('/embed/@trace?pv=SR11');
+    await waitFor(() => expect(notice()).toContain('At most 10 Data Browser tabs'));
+    expect(here()).toBe(`/embed/${active}`);
     expect(stored().keys).toEqual(full);
-    expect(stored().active).toBe(active);
-    send('/embed/@trace?pv=SR:1');
+    send('/embed/@trace?pv=SR1');
     await waitFor(() => expect(stored().active).toBe('@trace'));
     expect(stored().keys).toEqual(full);
     await waitFor(() => expect(here()).toBe('/embed/@trace'));
   });
 });
 
-describe('a tool URL at first load', () => {
+describe('a tool URL at first load, framed by a same-origin host', () => {
+  beforeEach(sameOriginParent);
+
   it('opens one tab with the query, no first-visit data browser beside it', async () => {
     renderAt(`/embed/@trace?${QUERY_A}&embedded=true`);
     await waitFor(() => expect(here()).toBe('/embed/@trace'));
     expect(stored().keys).toEqual(['@trace']);
     expect(stored().instances['@trace']?.query).toBe(QUERY_A);
     expect(notice()).toBeNull();
-    const frame = document.querySelector('iframe.workspace-trace');
-    expect(new URL((frame as HTMLIFrameElement).src).searchParams.getAll('pv')).toEqual(['SR:A']);
+    expect(frameUrl().searchParams.getAll('pv')).toEqual(['SR:A']);
   });
 
   it('joins the tabs the session restores, and focuses one showing the query', async () => {
     const first = renderAt('/embed/bts/knob');
     await screen.findByTestId('screen-probe');
-    send(`/embed/@trace?${QUERY_A}`);
-    await waitFor(() => expect(here()).toBe('/embed/@trace'));
-    send('/embed/bts/knob');
-    await waitFor(() => expect(stored().active).toBe('bts/knob'));
+    await waitFor(() => expect(stored().keys).toEqual(['bts/knob']));
     first.unmount();
 
     const second = renderAt(`/embed/@trace?${QUERY_A}`);
     await waitFor(() => expect(here()).toBe('/embed/@trace'));
     expect(stored().keys).toEqual(['bts/knob', '@trace']);
-    expect(stored().active).toBe('@trace');
     second.unmount();
 
-    renderAt(`/embed/@trace?${QUERY_B}`);
+    const third = renderAt(`/embed/@trace?${QUERY_B}`);
     await waitFor(() => expect(here()).toBe('/embed/@trace/2'));
     expect(stored().keys).toEqual(['bts/knob', '@trace', '@trace/2']);
-    expect(stored().instances['@trace/2']?.query).toBe(QUERY_B);
+    expect(stored().instances['@trace']?.query).toBe(QUERY_A);
+    third.unmount();
+
+    renderAt(`/embed/@trace?${QUERY_A}`);
+    await waitFor(() => expect(here()).toBe('/embed/@trace'));
+    expect(stored().keys).toEqual(['bts/knob', '@trace', '@trace/2']);
+    expect(stored().active).toBe('@trace');
   });
 
   it('a refused query opens nothing of its own, restores the URL and shows the notice', async () => {
@@ -336,7 +459,7 @@ describe('a tool URL at first load', () => {
     // A first visit opens what a bare /embed/ opens: the data browser on its default.
     await waitFor(() => expect(here()).toBe('/embed/@trace'));
     expect(stored().keys).toEqual(['@trace']);
-    expect(stored().instances['@trace']?.query).not.toBe(pvs(13));
+    expect(frameUrl().searchParams.getAll('pv')).toEqual(['DEFAULT']);
   });
 
   it('a refused query keeps the session as it was', async () => {
@@ -344,9 +467,92 @@ describe('a tool URL at first load', () => {
     await screen.findByTestId('screen-probe');
     await waitFor(() => expect(stored().keys).toEqual(['bts/knob']));
     first.unmount();
-    renderAt('/embed/@trace?pv=SR:A&range=soon');
+    renderAt('/embed/@trace?pv=SR:A&evil=1');
     await waitFor(() => expect(notice()).toContain('Data Browser'));
     await waitFor(() => expect(here()).toBe('/embed/bts/knob'));
+    expect(stored().keys).toEqual(['bts/knob']);
+  });
+
+  it("a later plain host link to that URL still navigates: the write is seen as the workspace's own", async () => {
+    renderAt(`/embed/@trace?${QUERY_A}`);
+    await waitFor(() => expect(here()).toBe('/embed/@trace'));
+    setParent(host);
+    send('/embed/bts/knob');
+    await waitFor(() => expect(stored().active).toBe('bts/knob'));
+    send('/embed/@trace');
+    await waitFor(() => expect(stored().active).toBe('@trace'));
+    await settle();
+    expect(here()).toBe('/embed/@trace');
+  });
+});
+
+describe('a query the host did not hand over', () => {
+  it.each([
+    ['a top-level load', () => setParent(window)],
+    [
+      'a cross-origin frame',
+      () => setParent({ location: { origin: 'https://evil.example' }, postMessage: vi.fn() }),
+    ],
+    [
+      'a frame whose parent cannot be read',
+      () =>
+        setParent({
+          get location() {
+            throw new DOMException('Blocked a frame', 'SecurityError');
+          },
+          postMessage: vi.fn(),
+        }),
+    ],
+  ])('%s ignores it and opens the tool on its own query', async (_label, arrange) => {
+    arrange();
+    renderAt('/embed/@trace?pv=EVIL:PV&range=-9d');
+    await waitFor(() => expect(here()).toBe('/embed/@trace'));
+    expect(frameUrl().searchParams.getAll('pv')).toEqual(['DEFAULT']);
+    expect(stored().keys).toEqual(['@trace']);
+    expect(stored().instances['@trace']?.query ?? null).toBeNull();
+    expect(notice()).toBeNull();
+  });
+
+  it('a top-level load leaves a stored instance unchanged', async () => {
+    setParent(window);
+    sessionStorage.setItem(
+      tabsStorageKey('/'),
+      JSON.stringify({
+        keys: ['@trace'],
+        active: '@trace',
+        instances: { '@trace': { query: 'pv=KEEP' } },
+        toolMru: ['@trace'],
+      })
+    );
+    renderAt('/embed/@trace?pv=EVIL:PV');
+    await waitFor(() => expect(here()).toBe('/embed/@trace'));
+    expect(stored().keys).toEqual(['@trace']);
+    expect(stored().instances['@trace']?.query).toBe('pv=KEEP');
+    expect(frameUrl().searchParams.getAll('pv')).toEqual(['KEEP']);
+  });
+
+  it('a router navigation inside a framed viewer ignores it', async () => {
+    renderAt('/embed/bts/knob');
+    await screen.findByTestId('screen-probe');
+    fireEvent.click(screen.getByTestId('router-link'));
+    await waitFor(() => expect(stored().active).toBe('@trace'));
+    expect(stored().instances['@trace']?.query ?? null).toBeNull();
+    expect(frameUrl().searchParams.getAll('pv')).toEqual(['DEFAULT']);
+  });
+
+  it('a navigate message from another window opens nothing', async () => {
+    renderAt('/embed/bts/knob');
+    await screen.findByTestId('screen-probe');
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: { type: NAVIGATE_MESSAGE, url: `/embed/@trace?${QUERY_A}` },
+          source: window,
+          origin: window.location.origin,
+        })
+      );
+    });
+    await settle();
     expect(stored().keys).toEqual(['bts/knob']);
   });
 });
@@ -371,7 +577,8 @@ describe('reload', () => {
     expect(stored().instances['@trace/2']?.query).toBe(QUERY_B);
   });
 
-  it('a first-load URL reloaded opens no second tab', async () => {
+  it('a framed first-load URL reloaded opens no second tab', async () => {
+    sameOriginParent();
     const first = renderAt(`/embed/@trace?${QUERY_A}`);
     await waitFor(() => expect(here()).toBe('/embed/@trace'));
     const written = here();

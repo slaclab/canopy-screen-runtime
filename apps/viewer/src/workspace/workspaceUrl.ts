@@ -1,8 +1,7 @@
 // The workspace URL of a tab key and back: /embed/ (no tab),
 // /embed/@<tool>[/<n>] (a tool instance) and /embed/<category>/<id>?<macros>
 // (a screen). The workspace writes only the active tab's URL, with `replace`.
-// /embed/@<tool>?<query> is read, never written: it asks for that query in a
-// tab, and the active tab's own URL replaces it (toolUrlOf, toolUrlOutcome).
+// A query on a tool URL is the host's hand-off and nothing else's: see toolUrlOf.
 
 import {
   type TabsAction,
@@ -20,12 +19,15 @@ import {
   toolKey,
   toolLabel,
   toolSpec,
+  withoutViewerParams,
 } from './tools.js';
 
 /**
  * The tab key a router-relative URL names: a tool instance at
- * `/embed/@<tool>[/<n>]` (by the key grammar alone — registered or not; a
- * query it carries is toolUrlOf's), or a screen at `/embed/<category>/<id>` (or `/s/...`)
+ * `/embed/@<tool>[/<n>]` (by the key grammar alone — registered or not; its
+ * query is ignored, because a page URL is not trusted to reach a tool or to
+ * overwrite a stored instance: only the host's hand-off carries one, see
+ * toolUrlOf), or a screen at `/embed/<category>/<id>` (or `/s/...`)
  * with its macro query. Null for `/embed/`, `/embed/<category>` alone, and
  * anything else.
  */
@@ -66,22 +68,32 @@ export function urlForKey(key: string | null): string {
   return parsed.query ? `${path}?${parsed.query}` : path;
 }
 
-/** What a tool URL with a query asks for. */
+/** What a host's tool URL with a query asks for. */
 export interface ToolUrl {
   tool: string;
   query: string;
 }
 
-/** A parameter the viewer's frame reads itself: never part of a tool's query. */
-function isReservedParam(pair: string): boolean {
-  const name = pair.split('=', 1)[0]!;
-  return ['embedded', 'theme', 'mode'].includes(name) || name.startsWith('_canopy');
+/**
+ * True in a frame whose parent is same-origin (a cross-origin read throws):
+ * the host's load of a tool URL, as opposed to a URL anyone can open or link.
+ */
+export function framedBySameOrigin(): boolean {
+  try {
+    return window.parent !== window && window.parent.location.origin === window.location.origin;
+  } catch {
+    return false;
+  }
 }
 
 /**
- * The tool and query a router-relative `/embed/@<tool>?<query>` asks for, the
- * query as written less the viewer's own parameters. Null for anything else: a
- * numbered instance names its tab, and a URL with no query left is a plain tool URL.
+ * The tool and query of a router-relative `/embed/@<tool>?<query>`, the query
+ * less the viewer's own parameters and in one encoding, so that one query
+ * compares equal however it was spelled. Null for anything else: a numbered
+ * instance names its tab, and a URL with no query left is a plain tool URL.
+ *
+ * Read only for what the host hands over: its navigate message, or a first
+ * load while framedBySameOrigin. Any other URL's query stays ignored (keyForUrl).
  */
 export function toolUrlOf(url: string): ToolUrl | null {
   const match = /^\/embed\/(@[^/?#]+)\/?\?([^#]*)/.exec(url);
@@ -93,19 +105,18 @@ export function toolUrlOf(url: string): ToolUrl | null {
     return null;
   }
   const tool = parseToolKey(key)?.tool;
-  const query = match[2]!
-    .split('&')
-    .filter((pair) => pair !== '' && !isReservedParam(pair))
-    .join('&');
+  const query = new URLSearchParams(withoutViewerParams(match[2]!)).toString();
   return tool === undefined || query === '' ? null : { tool, query };
 }
 
 /**
- * What a tool URL does, by the rules of the agent's open_tool: the tab already
- * showing the query takes focus, else a new instance opens with it. A tool
- * this viewer has not configured, a query an agent could not send and a tool
- * at its instance cap are refused with the notice to show. `defaultQuery` is
- * what an instance with no query of its own shows.
+ * What a host's tool URL does, by the rules of the agent's open_tool: the tab
+ * already showing the query takes focus, else a new instance opens with it, so
+ * no instance's stored query ever changes. Refused, with the notice to show: a
+ * tool this viewer has not configured or that takes no host query, a parameter
+ * outside the tool's hostQueryParams, a query an agent could not send, and a
+ * tool at its instance cap. `defaultQuery` is what an instance with no query
+ * of its own shows.
  */
 export function toolUrlOutcome(
   tabs: TabsState,
@@ -116,7 +127,12 @@ export function toolUrlOutcome(
 ): { action: TabsAction } | { notice: string } {
   const problem = toolProblem(toolKey(tool), tools);
   if (problem !== null) return { notice: `${problem}; nothing opened` };
-  if (!isAgentQuery(toolSpec(tool)!, query, nowMs)) {
+  const spec = toolSpec(tool)!;
+  const named = [...new URLSearchParams(query).keys()];
+  if (
+    !named.every((name) => spec.hostQueryParams?.includes(name)) ||
+    !isAgentQuery(spec, query, nowMs)
+  ) {
     return { notice: `${toolLabel(tool)}: the URL's query is not valid; nothing opened` };
   }
   const showing = instanceShowing(tabs, tool, query, defaultQuery);
