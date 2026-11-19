@@ -1,5 +1,5 @@
 // Local (loc://) formula evaluation: the WS2 tab-selector chain — rules whose
-// inputs are page locals must evaluate without Fox.
+// inputs are page locals must evaluate without the Formula Engine.
 import { describe, expect, it, vi } from 'vitest';
 import { createLocalAwareFormulaSubscriber } from './localFormula.js';
 import { evaluatePyExpr, PyExprError } from './pyExpr.js';
@@ -26,7 +26,7 @@ describe('evaluatePyExpr', () => {
   });
 
   it('handles inlined formula sums over namespaced tokens', () => {
-    // What compileRule produces when a rule pv references fox://sum (A+B).
+    // What compileRule produces when a rule pv references formula://sum (A+B).
     const expr = 'True if (({sum.A} + {sum.B}) != 0) else (False)';
     expect(ev(expr, { 'sum.A': 0, 'sum.B': 0 })).toBe(false);
     expect(ev(expr, { 'sum.A': 1, 'sum.B': 0 })).toBe(true);
@@ -101,22 +101,22 @@ describe('createLocalAwareFormulaSubscriber', () => {
 
   it('delegates non-local specs to the wrapped subscriber', () => {
     const local = new FakeLocalPV();
-    const fox: FormulaSubscriber = { subscribe: vi.fn(() => () => {}) };
-    const subscriber = createLocalAwareFormulaSubscriber(local, fox);
+    const formulaEngine: FormulaSubscriber = { subscribe: vi.fn(() => () => {}) };
+    const subscriber = createLocalAwareFormulaSubscriber(local, formulaEngine);
     subscriber.subscribe(spec('{0} + 1', { '0': 'DEV:X' }), { onResult: () => {} });
-    expect(fox.subscribe).toHaveBeenCalledTimes(1);
+    expect(formulaEngine.subscribe).toHaveBeenCalledTimes(1);
   });
 
   it('reports mixed local/gateway specs as errors', () => {
     const local = new FakeLocalPV();
-    const fox: FormulaSubscriber = { subscribe: vi.fn(() => () => {}) };
-    const subscriber = createLocalAwareFormulaSubscriber(local, fox);
+    const formulaEngine: FormulaSubscriber = { subscribe: vi.fn(() => () => {}) };
+    const subscriber = createLocalAwareFormulaSubscriber(local, formulaEngine);
     const onError = vi.fn();
     subscriber.subscribe(spec('{0} + {1}', { '0': 'loc://a', '1': 'DEV:X' }), {
       onResult: () => {},
       onError,
     });
     expect(onError).toHaveBeenCalled();
-    expect(fox.subscribe).not.toHaveBeenCalled();
+    expect(formulaEngine.subscribe).not.toHaveBeenCalled();
   });
 });

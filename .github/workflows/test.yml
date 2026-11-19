@@ -1,8 +1,7 @@
 name: Test
 
-# `pnpm install` pulls the @slaclab SDK packages (canopy-client/react/shell)
-# from GitHub Packages; the install step authenticates with GITHUB_TOKEN via
-# NODE_AUTH_TOKEN (see .npmrc), and the job is granted packages: read.
+# `pnpm install` pulls the @slaclab SDK packages (canopy-client/react/shell/
+# screen-ir) from the public npm registry, so it needs no token.
 
 on:
   push:
@@ -16,7 +15,6 @@ jobs:
 
     permissions:
       contents: read
-      packages: read
 
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
@@ -31,8 +29,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run tests
         run: pnpm test

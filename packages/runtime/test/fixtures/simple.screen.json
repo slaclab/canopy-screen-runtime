@@ -35,7 +35,7 @@
             "default": "#ffffff",
             "pvs": [
               { "name": "${P}:SEVR", "trigger": true },
-              { "name": "fox://sum", "trigger": true }
+              { "name": "formula://sum", "trigger": true }
             ],
             "conditions": [
               { "expression": "{0} > 1", "value": "#ff0000" },

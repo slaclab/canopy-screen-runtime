@@ -51,7 +51,7 @@ describe('applyRuleOutputs', () => {
     expect(applyRuleOutputs({}, GEOM, rules, [true, true]).visible).toBe(true);
     expect(applyRuleOutputs({}, GEOM, rules, [true, false]).visible).toBe(false);
     expect(applyRuleOutputs({ visible: false }, GEOM, rules, [true, true]).visible).toBe(false);
-    // Numeric truthiness from Fox (1/0) coerces.
+    // Numeric truthiness from the Formula Engine (1/0) coerces.
     expect(applyRuleOutputs({}, GEOM, rules, [1, 1]).visible).toBe(true);
     expect(applyRuleOutputs({}, GEOM, rules, [1, 0]).visible).toBe(false);
   });

@@ -1,29 +1,31 @@
-// Rule → Fox FormulaSpec compiler.
+// Rule → Formula Engine FormulaSpec compiler.
 //
 // Rules are stored in author form (@slaclab/canopy-screen-ir rules.ts) and
 // compile client-side at subscription time; the compiled form is never
-// stored. The compilation target is Fox's sandboxed Python expression
-// grammar (Canopy src/canopy/fox/language/grammar.py — ALLOWED_NODES
-// includes ast.IfExp), so an ordered condition/value ladder becomes nested
-// conditional expressions:
+// stored. The compilation target is the Formula Engine's sandboxed Python
+// expression grammar (Canopy src/canopy/formula_engine/language/grammar.py —
+// ALLOWED_NODES includes ast.IfExp), so an ordered condition/value ladder
+// becomes nested conditional expressions:
 //
 //   v0 if (c0) else (v1 if (c1) else (default))
 //
 // — first truthy condition wins, else the default, exactly the Rule
-// contract. Condition expressions pass through verbatim (Fox itself
-// normalizes `&&`/`||`/`!` to Python operators, see fox/services/parser.py
-// _BOOL_REPLACEMENTS); their `{N}` placeholders are already valid Fox
-// tokens, and we provide bindings keyed "0", "1", ... to match.
+// contract. Condition expressions pass through verbatim (the Formula Engine
+// itself normalizes `&&`/`||`/`!` to Python operators, see
+// formula_engine/services/parser.py _BOOL_REPLACEMENTS); their `{N}`
+// placeholders are already valid Formula Engine tokens, and we provide
+// bindings keyed "0", "1", ... to match.
 //
-// Fox constraints that shape this compiler (fox/services/parser.py and
-// formula_service.py):
+// Formula Engine constraints that shape this compiler
+// (formula_engine/services/parser.py and formula_service.py):
 //  - every `{token}` must be bound and every binding used — so bindings
 //    that end up unreferenced by any condition are dropped (a `trigger`-only
-//    PV has no FormulaSpec representation; Fox re-evaluates on every bound
-//    input anyway, and `trigger: false` likewise cannot be represented);
-//  - binding values must be PV names — `fox:`-prefixed values are rejected
+//    PV has no FormulaSpec representation; the Formula Engine re-evaluates on
+//    every bound input anyway, and `trigger: false` likewise cannot be
+//    represented);
+//  - binding values must be PV names — `formula:`-prefixed values are rejected
 //    ("formula-of-formula composition is not supported"), so a rule PV
-//    binding of `fox://<name>` is INLINED: the referenced screen formula's
+//    binding of `formula://<name>` is INLINED: the referenced screen formula's
 //    expression is substituted (parenthesized) for `{N}`, with its own
 //    bindings merged in under namespaced `<name>.<key>` tokens;
 //  - an expression must contain at least one `{token}`, so a rule with no
@@ -32,17 +34,17 @@
 //
 // Macros in rule PV bindings and in formula binding channels resolve here,
 // BEFORE subscribing, per the IR contract ("resolved client-side before
-// subscribing to Fox").
+// subscribing to the Formula Engine").
 
 import type { FormulaDeclaration, MacroValues, Rule } from '@slaclab/canopy-screen-ir';
 import type { FormulaSpec } from '../formula.js';
-import { foxName, isFoxRef } from '../foxRef.js';
+import { formulaName, isFormulaRef } from '../formulaRef.js';
 import { substituteMacros } from '../macros.js';
 
 /** JSON scalar a rule may write to its target property. */
 export type RuleScalar = string | number | boolean | null;
 
-/** A compiled rule: either a live Fox subscription or a static value. */
+/** A compiled rule: either a live Formula Engine subscription or a static value. */
 export type CompiledRule =
   | { readonly kind: 'formula'; readonly targetProperty: string; readonly spec: FormulaSpec }
   | { readonly kind: 'static'; readonly targetProperty: string; readonly value: RuleScalar };
@@ -56,7 +58,7 @@ export class RuleCompileError extends Error {
 
 const TOKEN_RE = /\{([^{}]+)\}/g;
 
-/** Render a rule scalar as a Fox (Python) literal. */
+/** Render a rule scalar as a Formula Engine (Python) literal. */
 function pyLiteral(value: RuleScalar): string {
   if (value === null) return 'None';
   if (typeof value === 'boolean') return value ? 'True' : 'False';
@@ -71,14 +73,15 @@ function escapeRegExp(s: string): string {
 }
 
 /**
- * Ensure a formula expression is in Fox wire form (`{token}` placeholders).
+ * Ensure a formula expression is in Formula Engine wire form (`{token}`
+ * placeholders).
  *
  * The IR authoring form writes bare binding names (`"A + B"` with bindings
- * `{A, B}` — see the screen-ir fixtures); Fox's parser requires `{A} + {B}`.
- * If the expression already contains a `{...}` token it is passed through
- * untouched (already wire form); otherwise each binding key is wrapped where
- * it appears as a standalone identifier. Binding keys shadow function names,
- * matching Fox's own namespace behavior.
+ * `{A, B}` — see the screen-ir fixtures); the Formula Engine's parser
+ * requires `{A} + {B}`. If the expression already contains a `{...}` token it
+ * is passed through untouched (already wire form); otherwise each binding key
+ * is wrapped where it appears as a standalone identifier. Binding keys shadow
+ * function names, matching the Formula Engine's own namespace behavior.
  */
 export function toWireExpression(expression: string, bindingKeys: readonly string[]): string {
   TOKEN_RE.lastIndex = 0;
@@ -131,7 +134,7 @@ function inlineFormula(decl: FormulaDeclaration, macros: MacroValues): InlinedFo
 /**
  * Compile a screen-level FormulaDeclaration to a standalone FormulaSpec:
  * authored expression tokenized to wire form, macros resolved in channel
- * bindings, unused bindings dropped (Fox rejects them).
+ * bindings, unused bindings dropped (the Formula Engine rejects them).
  */
 export function compileFormulaSpec(decl: FormulaDeclaration, macros: MacroValues): FormulaSpec {
   const sourceBindings = decl.bindings ?? {};
@@ -139,7 +142,7 @@ export function compileFormulaSpec(decl: FormulaDeclaration, macros: MacroValues
   const used = tokensIn(expression);
   if (used.size === 0) {
     throw new RuleCompileError(
-      `formula '${decl.name}' has no {token} inputs; Fox requires at least one bound variable`
+      `formula '${decl.name}' has no {token} inputs; the Formula Engine requires at least one bound variable`
     );
   }
 
@@ -163,7 +166,7 @@ function findFormula(
 ): FormulaDeclaration {
   const decl = (formulas ?? []).find((f) => f.name === name);
   if (!decl) {
-    throw new RuleCompileError(`no formulas[] entry declares 'fox://${name}'`);
+    throw new RuleCompileError(`no formulas[] entry declares 'formula://${name}'`);
   }
   return decl;
 }
@@ -173,13 +176,13 @@ function findFormula(
  *
  * - Formula arm (`rule.formula`): the named screen formula's spec, directly
  *   (tokenized + macro-resolved).
- * - Conditional arm (`rule.pvs` + `rule.conditions`): a single Fox
+ * - Conditional arm (`rule.pvs` + `rule.conditions`): a single Formula Engine
  *   expression — the nested-conditional ladder described in the header.
  * - No conditions, or no referenced live inputs: a static value (the
- *   rule's `default`); there is nothing for Fox to evaluate.
+ *   rule's `default`); there is nothing for the Formula Engine to evaluate.
  *
- * Throws RuleCompileError on dangling `fox://` references, `{N}` placeholders
- * with no `pvs[N]`, and formulas with no usable inputs.
+ * Throws RuleCompileError on dangling `formula://` references, `{N}`
+ * placeholders with no `pvs[N]`, and formulas with no usable inputs.
  */
 export function compileRule(
   rule: Rule,
@@ -189,7 +192,7 @@ export function compileRule(
   const targetProperty = rule.targetProperty;
 
   if ('formula' in rule) {
-    const decl = findFormula(foxName(rule.formula), screenFormulas);
+    const decl = findFormula(formulaName(rule.formula), screenFormulas);
     return { kind: 'formula', targetProperty, spec: compileFormulaSpec(decl, macros) };
   }
 
@@ -198,12 +201,12 @@ export function compileRule(
   }
 
   // Prepare each PV binding: plain PVs bind under their `{N}` index token
-  // (macro-resolved); fox:// references become inlined sub-expressions.
+  // (macro-resolved); formula:// references become inlined sub-expressions.
   const bindings: Record<string, string> = {};
   const inlined = new Map<number, InlinedFormula>();
   rule.pvs.forEach((pv, index) => {
-    if (isFoxRef(pv.name)) {
-      inlined.set(index, inlineFormula(findFormula(foxName(pv.name), screenFormulas), macros));
+    if (isFormulaRef(pv.name)) {
+      inlined.set(index, inlineFormula(findFormula(formulaName(pv.name), screenFormulas), macros));
     } else {
       bindings[String(index)] = substituteMacros(pv.name, macros);
     }
@@ -242,7 +245,7 @@ export function compileRule(
   }
 
   // Merge inlined formula channel bindings, then drop anything unused
-  // (trigger-only PVs; Fox rejects unused bindings).
+  // (trigger-only PVs; the Formula Engine rejects unused bindings).
   for (const sub of inlined.values()) Object.assign(bindings, sub.bindings);
   const finalBindings: Record<string, string> = {};
   for (const [key, channel] of Object.entries(bindings)) {
