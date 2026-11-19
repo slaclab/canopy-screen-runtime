@@ -2,8 +2,10 @@ name: Release
 
 # Publishes every workspace package to GitHub Packages when a version tag is
 # pushed. Flow: bump versions (lockstep) on main → tag v<version> → push tag.
-# Auth is the workflow's own GITHUB_TOKEN — no secrets to manage. After the
-# FIRST publish, grant each consumer repo read access on every package
+# Dependencies, the @slaclab SDK included, install from the public npm
+# registry; each package's publishConfig.registry sends the publish to GitHub
+# Packages. Auth is the workflow's own GITHUB_TOKEN — no secrets to manage.
+# After the FIRST publish, grant each consumer repo read access on every package
 # (package page → Package settings → Manage Actions access), or their CI
 # cannot install these packages.
 
@@ -31,12 +33,9 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-          registry-url: "https://npm.pkg.github.com"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build
         run: pnpm build
@@ -45,6 +44,11 @@ jobs:
         run: pnpm test
 
       - name: Publish
-        run: pnpm -r publish --no-git-checks
+        # Token for npm.pkg.github.com only; the @slaclab scope itself stays on
+        # the public registry. The single quotes keep ${NODE_AUTH_TOKEN} literal
+        # for pnpm to expand, so the token never lands in the file.
+        run: |
+          echo '//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}' >> "$HOME/.npmrc"
+          pnpm -r publish --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

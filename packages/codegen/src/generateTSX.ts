@@ -63,7 +63,7 @@ export function generateTSX(screen: ScreenModel): string {
       ? `{ ${macroEntries.map(([k, v]) => `${k}: '${v}'`).join(', ')} }`
       : '{}';
 
-  // Screen-level Fox formulas are author-facing data; emit them as a JSON
+  // Screen-level formulas are author-facing data; emit them as a JSON
   // array so they round-trip losslessly through parseTSX.
   const formulasLine =
     screen.meta.formulas && screen.meta.formulas.length > 0

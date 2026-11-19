@@ -2,7 +2,7 @@
   "name": "@slaclab/canopy-screen-runtime",
   "version": "0.1.0",
   "private": false,
-  "description": "React runtime for Canopy screens — ScreenRenderer over the Screen IR with macro resolution, embedded screens, and Fox-compiled widget rules",
+  "description": "React runtime for Canopy screens — ScreenRenderer over the Screen IR with macro resolution, embedded screens, and widget rules compiled for the Formula Engine",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/slaclab/canopy-screen-runtime.git",
@@ -32,7 +32,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@slaclab/canopy-screen-ir": "^0.1.2",
+    "@slaclab/canopy-screen-ir": "^0.3.0",
     "@slaclab/canopy-screen-widgets": "workspace:^"
   },
   "peerDependencies": {
@@ -41,8 +41,8 @@
   },
   "devDependencies": {
     "@carbon/react": "^1.108.0",
-    "@slaclab/canopy-client": "^0.1.2",
-    "@slaclab/canopy-react": "^0.1.2",
+    "@slaclab/canopy-client": "^0.3.0",
+    "@slaclab/canopy-react": "^0.3.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^19.2.14",

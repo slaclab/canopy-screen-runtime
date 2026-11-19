@@ -33,8 +33,9 @@ boundary, and each widget inside the screen has another one.
 | `VITE_RENDER_MODE`      | `edm`              | Default render mode: `edm` (legacy alarm/text presentation) · `carbon`      |
 
 `src/services.ts` is the composition root: `mock` builds a `MockPVService`
-(no Fox — rules stay at their base values), `hare` builds `HarePVService`
-plus `FoxFormulaService` wrapped in the runtime's formula-subscriber adapter.
+(no Formula Engine — rules stay at their base values), `hare` builds
+`HarePVService` plus the SDK's Formula Engine service wrapped in the runtime's
+formula-subscriber adapter.
 
 ## Local dev against a canopy-screens checkout (smoke test)
 

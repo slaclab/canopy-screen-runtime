@@ -24,7 +24,7 @@ export interface ScreenMeta {
   readonly height: number;
   readonly backgroundColor: string;
   readonly macros: Readonly<Record<string, string>>;
-  /** Screen-level Fox formulas; emitted as JSON so they round-trip via parseTSX. */
+  /** Screen-level formulas; emitted as JSON so they round-trip via parseTSX. */
   formulas?: readonly FormulaDeclaration[];
 }
 

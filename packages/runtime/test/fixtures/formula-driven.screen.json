@@ -26,7 +26,7 @@
       {
         "id": "w-002",
         "type": "pv-label",
-        "props": { "pv": "fox://f-001" },
+        "props": { "pv": "formula://f-001" },
         "geometry": { "x": 10, "y": 10, "width": 200, "height": 30 },
         "rules": [
           {
@@ -49,7 +49,7 @@
             "name": "Visible when computed value high",
             "targetProperty": "visible",
             "pvs": [
-              { "name": "fox://f-001", "trigger": true },
+              { "name": "formula://f-001", "trigger": true },
               { "name": "${P}:THRESHOLD", "trigger": true }
             ],
             "conditions": [{ "expression": "{0} > {1}", "value": false }],

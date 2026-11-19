@@ -1,10 +1,10 @@
-// Adapter: the SDK's FoxFormulaService → the runtime's FormulaSubscriber.
+// Adapter: the SDK's Formula Engine service → the runtime's FormulaSubscriber.
 //
 // Structurally typed on purpose: the runtime does not depend on
 // @slaclab/canopy-client — the composition root (viewer app) constructs the
-// concrete FoxFormulaService and passes it here. `FoxServiceLike` is the
-// minimal shape of FoxFormulaService.subscribe; the SDK class satisfies it
-// (pinned by the wiring test, which uses the real class as a dev dependency).
+// concrete Formula Engine service and passes it here. `FormulaEngineServiceLike`
+// is the minimal shape of its `subscribe`; the SDK class satisfies it (pinned
+// by the wiring test, which uses the real class as a dev dependency).
 
 import type {
   FormulaResultMeta,
@@ -14,7 +14,7 @@ import type {
   FormulaSubscriber,
 } from '../formula.js';
 
-interface FoxScalarLike {
+interface FormulaEngineScalarLike {
   value: FormulaScalarValue;
   /** Wire severity (`NO_ALARM` | `MINOR` | `MAJOR` | `INVALID`). */
   severity?: string;
@@ -29,7 +29,7 @@ const KNOWN_SEVERITIES: ReadonlySet<string> = new Set<FormulaSeverity>([
   'INVALID',
 ]);
 
-function resultMeta(scalar: FoxScalarLike): FormulaResultMeta {
+function resultMeta(scalar: FormulaEngineScalarLike): FormulaResultMeta {
   const meta: { severity?: FormulaSeverity; timestampMs?: number } = {};
   if (scalar.severity !== undefined) {
     // Like HarePVService: a severity the server grew later reads as INVALID.
@@ -43,35 +43,37 @@ function resultMeta(scalar: FoxScalarLike): FormulaResultMeta {
   return meta;
 }
 
-interface FoxResultLike {
+interface FormulaEngineResultLike {
   kind: string;
-  scalar: FoxScalarLike | null;
+  scalar: FormulaEngineScalarLike | null;
 }
 
-interface FoxErrorLike {
+interface FormulaEngineErrorLike {
   code: string;
   message: string;
 }
 
-export interface FoxServiceLike {
+export interface FormulaEngineServiceLike {
   subscribe(
     spec: FormulaSpec,
     options: {
       intervalMs?: number;
-      onResult: (data: FoxResultLike) => void;
-      onError?: (error: FoxErrorLike) => void;
+      onResult: (data: FormulaEngineResultLike) => void;
+      onError?: (error: FormulaEngineErrorLike) => void;
     }
   ): () => void;
 }
 
 /**
- * Wrap a FoxFormulaService (or anything of its shape) as the
+ * Wrap the SDK's Formula Engine service (or anything of its shape) as the
  * FormulaSubscriber the rule engine consumes. Scalar results feed
  * `onResult` with the bare value plus its severity/timestamp metadata;
  * non-scalar results are ignored (rules and widget channels are scalar);
  * error frames map onto plain Errors.
  */
-export function createFoxFormulaSubscriber(service: FoxServiceLike): FormulaSubscriber {
+export function createFormulaEngineSubscriber(
+  service: FormulaEngineServiceLike
+): FormulaSubscriber {
   return {
     subscribe(spec: FormulaSpec, { intervalMs, onResult, onError }) {
       return service.subscribe(spec, {

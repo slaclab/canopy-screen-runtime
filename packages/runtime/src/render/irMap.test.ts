@@ -4,10 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { mapIRWidget } from './irMap.js';
 
 describe('pv-label precision source', () => {
-  it('defaults precisionFromPV to false for fox:// formula channels', () => {
-    const mapped = mapIRWidget('pv-label', { pv: 'fox://f-001', precision: 3 });
+  it('defaults precisionFromPV to false for formula:// formula channels', () => {
+    const mapped = mapIRWidget('pv-label', { pv: 'formula://f-001', precision: 3 });
     expect(mapped?.props).toMatchObject({
-      pvName: 'fox://f-001',
+      pvName: 'formula://f-001',
       precision: 3,
       precisionFromPV: false,
     });
@@ -18,7 +18,7 @@ describe('pv-label precision source', () => {
       'precisionFromPV'
     );
     expect(
-      mapIRWidget('pv-label', { pv: 'fox://f-001', precision: 3, precisionFromPV: true })?.props
+      mapIRWidget('pv-label', { pv: 'formula://f-001', precision: 3, precisionFromPV: true })?.props
         .precisionFromPV
     ).toBe(true);
   });

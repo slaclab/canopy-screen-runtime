@@ -1,30 +1,30 @@
-// Screen-scoped PV routing: `fox://<name>` widget channels → screen formulas.
+// Screen-scoped PV routing: `formula://<name>` widget channels → screen formulas.
 //
 // Converters emit calc channels (EDM `CALC\{expr}(a,b)`, PyDM `calc://`) as
 // screen-level `formulas[]` declarations, referenced from widget channel
-// props as `fox://<name>`. Widgets are scheme-unaware — they call
+// props as `formula://<name>`. Widgets are scheme-unaware — they call
 // usePV(address) against the ambient PVService — so the renderer installs one
 // ScreenPVService per rendered screen (the root and every embedded screen):
 //
-//  - `fox://<name>` resolves against THAT screen's `formulas[]`, with THAT
+//  - `formula://<name>` resolves against THAT screen's `formulas[]`, with THAT
 //    screen's effective macros substituted into the bindings (the same
 //    compileFormulaSpec path formula-driven rules use), and is evaluated
-//    through the ambient FormulaSubscriber — Fox over WS
-//    /fox/v1/ws/formulas, or page-local for loc://-only formulas. Results
-//    feed widgets as PVData: value, severity (Fox's worst input severity),
-//    connected. One upstream subscription per formula name, shared by every
-//    widget that reads it.
+//    through the ambient FormulaSubscriber — the Formula Engine over WS
+//    /formula-engine/v1/ws/formulas, or page-local for loc://-only formulas.
+//    Results feed widgets as PVData: value, severity (the Formula Engine's
+//    worst input severity), connected. One upstream subscription per formula
+//    name, shared by every widget that reads it.
 //  - Formula channels are read-only: `put` is rejected with a warning.
 //  - Every other address delegates to the parent service untouched, so an
 //    embedded screen's scope chains up to the page's (Hare/mock + loc://)
-//    service while its own `fox://` names never leak to the parent's
+//    service while its own `formula://` names never leak to the parent's
 //    formulas.
 //
 // Anything that keeps a formula from evaluating — no declaration, a
-// non-scalar kind, a compile error, a `fox://` binding (Fox rejects
-// formula-of-formula), a Fox error frame — leaves the channel disconnected
-// (widgets show their `---` placeholder) with a console warning; never a
-// crash. Without a FormulaSubscriber (no formula service at all) formula
+// non-scalar kind, a compile error, a `formula://` binding (the Formula
+// Engine rejects formula-of-formula), a Formula Engine error frame — leaves
+// the channel disconnected (widgets show their `---` placeholder) with a
+// console warning; never a crash. Without a FormulaSubscriber (no formula service at all) formula
 // channels simply stay disconnected, as rules stay inert.
 
 import type { FormulaDeclaration, MacroValues } from '@slaclab/canopy-screen-ir';
@@ -37,7 +37,7 @@ import type {
   FormulaSpec,
   FormulaSubscriber,
 } from './formula.js';
-import { foxName, isFoxRef } from './foxRef.js';
+import { formulaName, isFormulaRef } from './formulaRef.js';
 import { compileFormulaSpec, RuleCompileError } from './rules/compileRule.js';
 
 const SEVERITY: Readonly<Record<FormulaSeverity, AlarmSeverity>> = {
@@ -47,11 +47,11 @@ const SEVERITY: Readonly<Record<FormulaSeverity, AlarmSeverity>> = {
   INVALID: AlarmSeverity.INVALID,
 };
 
-/** Significant digits for formula display values (Fox reports no precision). */
+/** Significant digits for formula display values (the Formula Engine reports no precision). */
 const DISPLAY_SIGNIFICANT_DIGITS = 6;
 
 /**
- * Display text for a formula result. Fox carries no display metadata
+ * Display text for a formula result. The Formula Engine carries no display metadata
  * (precision/units), so floats are shown to a bounded number of significant
  * digits with trailing zeros trimmed; integers, strings and booleans as-is.
  */
@@ -75,7 +75,7 @@ export class ScreenPVService implements PVService {
   private readonly macros: MacroValues;
   private readonly subscriber: FormulaSubscriber | null;
   private readonly channels = new Map<string, FormulaChannel>();
-  /** Warnings already printed by this scope (dedupes recurring Fox errors). */
+  /** Warnings already printed by this scope (dedupes recurring Formula Engine errors). */
   private readonly warned = new Set<string>();
 
   constructor(
@@ -93,7 +93,7 @@ export class ScreenPVService implements PVService {
   // ── PVService ────────────────────────────────────────────────────────────
 
   subscribe(pvName: string, listener: PVListener): () => void {
-    if (!isFoxRef(pvName)) return this.parent.subscribe(pvName, listener);
+    if (!isFormulaRef(pvName)) return this.parent.subscribe(pvName, listener);
 
     let channel = this.channels.get(pvName);
     if (!channel) {
@@ -113,7 +113,7 @@ export class ScreenPVService implements PVService {
   }
 
   put(pvName: string, value: number | string | boolean): void {
-    if (!isFoxRef(pvName)) {
+    if (!isFormulaRef(pvName)) {
       this.parent.put(pvName, value);
       return;
     }
@@ -123,7 +123,7 @@ export class ScreenPVService implements PVService {
   }
 
   getSnapshot(pvName: string): PVData | undefined {
-    if (!isFoxRef(pvName)) return this.parent.getSnapshot(pvName);
+    if (!isFormulaRef(pvName)) return this.parent.getSnapshot(pvName);
     return this.channels.get(pvName)?.data;
   }
 
@@ -169,7 +169,7 @@ export class ScreenPVService implements PVService {
 
   /** The address's FormulaSpec, or undefined (with a warning) when it can't evaluate. */
   private resolve(address: string): FormulaSpec | undefined {
-    const name = foxName(address);
+    const name = formulaName(address);
     const decl = (this.formulas ?? []).find((f) => f.name === name);
     if (!decl) {
       this.warnOnce(`widget channel '${address}': no formulas[] entry declares '${name}'`);
@@ -192,11 +192,11 @@ export class ScreenPVService implements PVService {
       return undefined;
     }
 
-    const nested = Object.values(spec.bindings).filter(isFoxRef);
+    const nested = Object.values(spec.bindings).filter(isFormulaRef);
     if (nested.length > 0) {
       this.warnOnce(
         `widget channel '${address}': formula-of-formula bindings (${nested.join(', ')}) ` +
-          'are not supported by Fox'
+          'are not supported by the Formula Engine'
       );
       return undefined;
     }

@@ -1,5 +1,5 @@
 // Installs a ScreenPVService for one rendered screen (see ../screenPV.ts):
-// the subtree's widgets read `fox://` channels from this screen's formulas
+// the subtree's widgets read `formula://` channels from this screen's formulas
 // and macros, everything else from the enclosing PVService.
 
 import { useContext, useMemo } from 'react';

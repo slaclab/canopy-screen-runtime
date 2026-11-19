@@ -11,13 +11,13 @@ from [Canopy](https://github.com/slaclab/Canopy) through the
 
 ## Workspace
 
-| Package                                              | Purpose                                                                                                    |
-| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| [`@slaclab/canopy-screen-ir`](packages/screen-ir)    | Canonical Screen IR — types, JSON Schema, `validate()` (ported verbatim from the builder; frozen contract) |
-| [`@slaclab/canopy-screen-widgets`](packages/widgets) | Carbon PV widgets, drawing primitives, and the widget registry shared by builder and runtime               |
-| [`@slaclab/canopy-screen-runtime`](packages/runtime) | `ScreenRenderer` — macros, embedded screens, per-widget containment, and Fox-compiled widget rules         |
-| [`@slaclab/canopy-screen-codegen`](packages/codegen) | `generateTSX` — ejectable React code from screen models (generation direction only)                        |
-| [`viewer`](apps/viewer)                              | **Canopy Screens** — browse `/` and deep-link `/s/:category/:id?MACRO=value` over canopy-screens content   |
+| Package                                              | Purpose                                                                                                               |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| [`@slaclab/canopy-screen-ir`](packages/screen-ir)    | Canonical Screen IR — types, JSON Schema, `validate()` (ported verbatim from the builder; frozen contract)            |
+| [`@slaclab/canopy-screen-widgets`](packages/widgets) | Carbon PV widgets, drawing primitives, and the widget registry shared by builder and runtime                          |
+| [`@slaclab/canopy-screen-runtime`](packages/runtime) | `ScreenRenderer` — macros, embedded screens, per-widget containment, and widget rules compiled for the Formula Engine |
+| [`@slaclab/canopy-screen-codegen`](packages/codegen) | `generateTSX` — ejectable React code from screen models (generation direction only)                                   |
+| [`viewer`](apps/viewer)                              | **Canopy Screens** — browse `/` and deep-link `/s/:category/:id?MACRO=value` over canopy-screens content              |
 
 ## Development
 
@@ -40,18 +40,15 @@ end-to-end smoke test.
 ## SDK dependencies: published vs linked (local dev)
 
 The `@slaclab/canopy-client` / `canopy-react` / `canopy-shell` /
-`canopy-screen-ir` packages publish to GitHub Packages, and `.npmrc` routes
-the `@slaclab` scope there. There are two supported ways to install:
+`canopy-screen-ir` packages are on the public npm registry (0.3.0 and later).
+There are two supported ways to install:
 
-- **Published mode** (CI, consumers): export a `NODE_AUTH_TOKEN` with
-  `read:packages` before `pnpm install`. The token line in `.npmrc` must be
-  active for this mode; note pnpm fails config expansion when the variable is
-  referenced but unset — that's the symptom of a missing token.
+- **Published mode** (CI, consumers): plain `pnpm install`; no token or
+  `.npmrc` is needed.
 - **Linked mode** (SDK co-development, the fidelity loop): add an
   `overrides` block to `pnpm-workspace.yaml` pointing `link:` at a sibling
   `../canopy-sdk-js` checkout (build it first: `pnpm install && pnpm build`
-  there), and comment out the `.npmrc` token line so an unset
-  `NODE_AUTH_TOKEN` cannot break config expansion:
+  there):
 
   ```yaml
   overrides:
@@ -67,7 +64,7 @@ the `@slaclab` scope there. There are two supported ways to install:
 
 The overrides block is a local working-copy setting: do not commit it (CI
 has no sibling checkout and must install published versions), and revert
-both files before pushing. `canopy-screens` uses the same pattern for
+it before pushing. `canopy-screens` uses the same pattern for
 `@slaclab/canopy-screen-ir` (as a direct `link:` dependency).
 
 ## Documentation

@@ -16,12 +16,12 @@
   "dependencies": {
     "@carbon/react": "^1.108.0",
     "@carbon/styles": "^1.100.0",
-    "@slaclab/canopy-client": "^0.1.2",
-    "@slaclab/canopy-react": "^0.1.2",
-    "@slaclab/canopy-screen-ir": "^0.1.2",
+    "@slaclab/canopy-client": "^0.3.0",
+    "@slaclab/canopy-react": "^0.3.0",
+    "@slaclab/canopy-screen-ir": "^0.3.0",
     "@slaclab/canopy-screen-runtime": "workspace:^",
     "@slaclab/canopy-screen-widgets": "workspace:^",
-    "@slaclab/canopy-shell": "^0.1.2",
+    "@slaclab/canopy-shell": "^0.3.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.1.0"

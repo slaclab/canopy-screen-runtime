@@ -13,11 +13,11 @@
 // caller's `resolveScreen` with a depth cap and a ref-chain cycle guard.
 //
 // The renderer is service-agnostic: widgets consume live PVs through
-// @slaclab/canopy-react context, rules consume Fox through the
+// @slaclab/canopy-react context, rules consume the Formula Engine through the
 // FormulaSubscriberContext — the composition root provides both. Each
 // rendered screen (root and every embedded screen) wraps the PV context in a
-// ScreenPVScope so `fox://<name>` widget channels evaluate that screen's own
-// formulas with its own macros.
+// ScreenPVScope so `formula://<name>` widget channels evaluate that screen's
+// own formulas with its own macros.
 //
 // Presentation: `renderMode` (edm | carbon) is provided to every widget —
 // embedded screens included — through the widget set's RenderModeContext;

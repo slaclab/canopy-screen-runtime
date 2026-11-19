@@ -1,7 +1,7 @@
-// `fox://<name>` widget channels end-to-end through the renderer: the
+// `formula://<name>` widget channels end-to-end through the renderer: the
 // screen's formulas (with its effective macros) are subscribed through the
 // ambient FormulaSubscriber and the result feeds the widget like a PV value;
-// embedded screens evaluate their OWN formulas; mock mode (no Fox) and
+// embedded screens evaluate their OWN formulas; mock mode (no Formula Engine) and
 // unresolvable names degrade to the disconnected placeholder.
 
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -112,9 +112,9 @@ function withServices(
 
 // Disconnection is asserted through carbon mode's '---' placeholder (edm mode
 // draws EDM's empty outlined box instead; see renderMode.test.tsx).
-describe('fox:// widget channels', () => {
+describe('formula:// widget channels', () => {
   it('evaluates the screen formula with caller macros and shows the result', () => {
-    const doc = screenDoc('pct', [PCT], [label('w-040', 'fox://f-001')], { DEV: 'UNSET' });
+    const doc = screenDoc('pct', [PCT], [label('w-040', 'formula://f-001')], { DEV: 'UNSET' });
     render(
       withServices(
         <ScreenRenderer screen={doc} macros={{ DEV: 'DEMO:VAC:GAUGE1' }} renderMode="carbon" />
@@ -146,7 +146,7 @@ describe('fox:// widget channels', () => {
         {
           id: 'w-040',
           type: 'pv-label',
-          props: { pv: 'fox://f-001', precision: 3, showUnits: true },
+          props: { pv: 'formula://f-001', precision: 3, showUnits: true },
           geometry: { x: 192, y: 172, width: 88, height: 28 },
         },
       ],
@@ -161,7 +161,7 @@ describe('fox:// widget channels', () => {
     const doc = screenDoc(
       'pct',
       [PCT],
-      [label('a', 'fox://f-001', 10), label('b', 'fox://f-001', 40)],
+      [label('a', 'formula://f-001', 10), label('b', 'formula://f-001', 40)],
       { DEV: 'D' }
     );
     render(withServices(<ScreenRenderer screen={doc} />));
@@ -174,13 +174,13 @@ describe('fox:// widget channels', () => {
     const child = screenDoc(
       'child',
       [{ name: 'f-001', expression: 'A * 2', bindings: { A: '${P}:CHILD' } }],
-      [label('c-lbl', 'fox://f-001')]
+      [label('c-lbl', 'formula://f-001')]
     );
     const host = screenDoc(
       'host',
       [{ name: 'f-001', expression: 'A + 1', bindings: { A: '${P}:HOST' } }],
       [
-        label('h-lbl', 'fox://f-001'),
+        label('h-lbl', 'formula://f-001'),
         {
           id: 'h-embed',
           type: 'embedded-display',
@@ -217,14 +217,14 @@ describe('fox:// widget channels', () => {
   });
 
   it('unknown formula names render disconnected with a warning (no crash)', () => {
-    const doc = screenDoc('bad', [PCT], [label('w', 'fox://missing')], { DEV: 'D' });
+    const doc = screenDoc('bad', [PCT], [label('w', 'formula://missing')], { DEV: 'D' });
     render(withServices(<ScreenRenderer screen={doc} renderMode="carbon" />));
     expect(screen.getByText('---')).toBeTruthy();
     expect(screen.queryByTestId('widget-error')).toBeNull();
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("'missing'"));
   });
 
-  it('mock mode (no Fox): gateway formulas stay disconnected, loc:// formulas evaluate locally', () => {
+  it('mock mode (no Formula Engine): gateway formulas stay disconnected, loc:// formulas evaluate locally', () => {
     const locals = new LocalPVService();
     locals.connect();
     const page = new RoutedPVService({ 'loc://': locals }, pv);
@@ -239,7 +239,7 @@ describe('fox:// widget channels', () => {
           bindings: { A: 'loc://a?type=int&init=2', B: 'loc://b?type=int&init=3' },
         },
       ],
-      [label('pct', 'fox://f-001', 10), label('sum', 'fox://sum', 40)],
+      [label('pct', 'formula://f-001', 10), label('sum', 'formula://sum', 40)],
       { DEV: 'D' }
     );
     render(withServices(<ScreenRenderer screen={doc} renderMode="carbon" />, page, mockSubscriber));

@@ -1,8 +1,9 @@
 // FormulaSubscriber composition: formulas whose bindings are ALL client-side
 // locals (loc://) evaluate in the page against the local PV service; anything
-// else goes to the wrapped (Fox) subscriber. A mixed spec — locals and CA
-// channels in one expression — has no evaluation venue today (Fox cannot see
-// page locals) and is surfaced as a subscription error.
+// else goes to the wrapped (Formula Engine) subscriber. A mixed spec — locals
+// and CA channels in one expression — has no evaluation venue today (the
+// Formula Engine cannot see page locals) and is surfaced as a subscription
+// error.
 
 import type { FormulaSpec, FormulaSubscriber } from '../formula.js';
 import { evaluatePyExpr, PyExprError, type PyValue } from './pyExpr.js';
@@ -27,12 +28,13 @@ function scalar(value: unknown): PyValue {
 }
 
 /**
- * Wrap `fox` so loc-only formulas evaluate locally. `fox` may be null (mock
- * mode): loc-only formulas still work there — they need no backend at all.
+ * Wrap `formulaEngine` so loc-only formulas evaluate locally. `formulaEngine`
+ * may be null (mock mode): loc-only formulas still work there — they need no
+ * backend at all.
  */
 export function createLocalAwareFormulaSubscriber(
   local: LocalPVLike,
-  fox: FormulaSubscriber | null
+  formulaEngine: FormulaSubscriber | null
 ): FormulaSubscriber {
   return {
     subscribe(spec: FormulaSpec, options) {
@@ -40,7 +42,7 @@ export function createLocalAwareFormulaSubscriber(
       const localCount = addresses.filter(isLocal).length;
 
       if (localCount === 0) {
-        if (fox) return fox.subscribe(spec, options);
+        if (formulaEngine) return formulaEngine.subscribe(spec, options);
         return () => {};
       }
       if (localCount !== addresses.length) {
