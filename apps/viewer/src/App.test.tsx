@@ -7,6 +7,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { LocalPVService, MockPVService } from '@slaclab/canopy-client';
 import { registerBuiltinWidgets } from '@slaclab/canopy-screen-widgets';
+import type { RenderMode } from '@slaclab/canopy-screen-runtime';
 import { App } from './App.js';
 import { ServicesContext } from './services.js';
 import type { ViewerServices } from './services.js';
@@ -107,11 +108,11 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function renderAt(path: string) {
+function renderAt(path: string, defaultRenderMode?: RenderMode) {
   return render(
     <ServicesContext.Provider value={services}>
       <MemoryRouter initialEntries={[path]}>
-        <App screensBaseUrl="" />
+        <App screensBaseUrl="" defaultRenderMode={defaultRenderMode} />
       </MemoryRouter>
     </ServicesContext.Provider>
   );
@@ -221,5 +222,50 @@ describe('screen page (deep link)', () => {
     stubFetch({ '/manifest.json': MANIFEST });
     renderAt('/s/cryo/pump-panel');
     expect(await screen.findByText(/is a wrapper screen/)).toBeTruthy();
+  });
+});
+
+describe('screen page render mode', () => {
+  // A screen whose label shows the value of a `render` macro, if any.
+  const MODE_SCREEN = {
+    ...MOTOR_SCREEN,
+    kind: 'screen',
+    id: 'CBXFEL/Landing',
+    metadata: { ...MOTOR_SCREEN.metadata, title: 'CBXFEL Landing' },
+    macros: [],
+    root: { ...MOTOR_SCREEN.root, props: { text: 'render=${render}' } },
+  };
+
+  function stubModeScreen() {
+    stubFetch({
+      '/manifest.json': MANIFEST,
+      '/screens/examples/CBXFEL/Landing.screen.json': MODE_SCREEN,
+    });
+  }
+
+  it("renders in 'edm' mode by default", async () => {
+    stubModeScreen();
+    renderAt('/s/examples/CBXFEL/Landing');
+    expect((await screen.findByTestId('screen-root')).dataset.renderMode).toBe('edm');
+  });
+
+  it('uses the configured default (VITE_RENDER_MODE)', async () => {
+    stubModeScreen();
+    renderAt('/s/examples/CBXFEL/Landing', 'carbon');
+    expect((await screen.findByTestId('screen-root')).dataset.renderMode).toBe('carbon');
+  });
+
+  it('?render= overrides the default and is not passed on as a macro', async () => {
+    stubModeScreen();
+    renderAt('/s/examples/CBXFEL/Landing?render=carbon');
+    expect((await screen.findByTestId('screen-root')).dataset.renderMode).toBe('carbon');
+    // Unresolved macros stay verbatim: `render` never reached the screen.
+    expect(screen.getByText('render=${render}')).toBeTruthy();
+  });
+
+  it('ignores an unknown ?render= value', async () => {
+    stubModeScreen();
+    renderAt('/s/examples/CBXFEL/Landing?render=bogus', 'carbon');
+    expect((await screen.findByTestId('screen-root')).dataset.renderMode).toBe('carbon');
   });
 });

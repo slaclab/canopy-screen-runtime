@@ -20,6 +20,7 @@ import { ScreenImageWidget } from '../drawing/ScreenImageWidget.js';
 import { WaveformPlot } from '../charts/WaveformPlot.js';
 import { useFitText } from '../shared/useFitText.js';
 import { ArcWidget } from '../drawing/ArcWidget.js';
+import { useRenderProfile } from '../renderMode.js';
 
 // ── Shared prop schemas ─────────────────────────────────────────────────────
 
@@ -89,8 +90,16 @@ function EllipseWidget({ layout, props, isSelected, children }: WidgetRendererPr
   );
 }
 
+const FLEX_ALIGN = { left: 'flex-start', center: 'center', right: 'flex-end' } as const;
+
 function StaticLabelWidget({ layout, props, isSelected }: WidgetRendererProps) {
   const text = (props.text as string) ?? 'Label';
+  const { textInset } = useRenderProfile();
+  // IR `align` (EDM/Qt label alignment; absent = left) positions the text
+  // block and aligns its lines; `fontFamily` when the IR carries one.
+  const align = props.align === 'center' || props.align === 'right' ? props.align : 'left';
+  const fontFamily =
+    typeof props.fontFamily === 'string' && props.fontFamily !== '' ? props.fontFamily : undefined;
   const maxFontSize = (props.fontSize as number) ?? 14;
   const { ref, fontSize } = useFitText<HTMLSpanElement>(maxFontSize, [
     text,
@@ -107,7 +116,9 @@ function StaticLabelWidget({ layout, props, isSelected }: WidgetRendererProps) {
         backgroundColor: (props.backgroundColor as string) ?? 'transparent',
         display: 'flex',
         alignItems: 'center',
-        padding: '0 4px',
+        justifyContent: FLEX_ALIGN[align],
+        // Render-mode text metrics (edm: flush like EDM's static text).
+        padding: `0 ${textInset ?? 4}px`,
         outline: isSelected ? '1px solid #0f62fe' : 'none',
         userSelect: 'none',
         overflow: 'hidden',
@@ -118,7 +129,11 @@ function StaticLabelWidget({ layout, props, isSelected }: WidgetRendererProps) {
         ref={ref}
         style={{
           fontSize,
-          whiteSpace: 'nowrap',
+          fontFamily,
+          textAlign: align,
+          // Authored line breaks are content (EDM draws one line per '\n',
+          // the block vertically centred); lines themselves never wrap.
+          whiteSpace: 'pre',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           maxWidth: '100%',

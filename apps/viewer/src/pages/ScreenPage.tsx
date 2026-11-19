@@ -1,12 +1,22 @@
 // /s/:category/* — render one IR screen with ?MACRO=value query macros. The
 // screen id is the splat, so nested ids ("CBXFEL/Landing") match.
+//
+// Reserved query parameter: `render` (edm | carbon) selects the render mode
+// for this page, overriding VITE_RENDER_MODE; it is NOT a macro (it would
+// otherwise leak into every embedded screen's macro dictionary).
 
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { PVServiceProvider } from '@slaclab/canopy-react';
 import { SCHEMA_VERSION } from '@slaclab/canopy-screen-ir';
 import type { ScreenJSON } from '@slaclab/canopy-screen-ir';
-import { FormulaSubscriberContext, ScreenRenderer } from '@slaclab/canopy-screen-runtime';
+import {
+  DEFAULT_RENDER_MODE,
+  FormulaSubscriberContext,
+  parseRenderMode,
+  ScreenRenderer,
+} from '@slaclab/canopy-screen-runtime';
+import type { RenderMode } from '@slaclab/canopy-screen-runtime';
 import { AppHeader } from '@slaclab/canopy-shell';
 import type { ManifestScreen } from '../api.js';
 import { fetchManifest, fetchScreenDocument, makeResolveAsset, makeResolveScreen } from '../api.js';
@@ -84,7 +94,16 @@ function useScreenDocument(
   return loaded && loaded.key === key ? loaded.state : { status: 'loading' };
 }
 
-export function ScreenPage({ screensBaseUrl }: { screensBaseUrl: string }) {
+/** The viewer-reserved query parameter selecting the render mode. */
+export const RENDER_QUERY_PARAM = 'render';
+
+export function ScreenPage({
+  screensBaseUrl,
+  defaultRenderMode = DEFAULT_RENDER_MODE,
+}: {
+  screensBaseUrl: string;
+  defaultRenderMode?: RenderMode;
+}) {
   const params = useParams();
   const category = params.category;
   const id = params['*']; // splat holds the (possibly slashed) screen id
@@ -99,12 +118,17 @@ export function ScreenPage({ screensBaseUrl }: { screensBaseUrl: string }) {
     return () => services.locals.clear();
   }, [services, category, id]);
 
-  // Every ?NAME=value query parameter is a macro value.
+  // Every ?NAME=value query parameter is a macro value, except the
+  // viewer-reserved ?render=.
   const macros = useMemo(() => {
     const out: Record<string, string> = {};
-    for (const [name, value] of searchParams.entries()) out[name] = value;
+    for (const [name, value] of searchParams.entries()) {
+      if (name !== RENDER_QUERY_PARAM) out[name] = value;
+    }
     return out;
   }, [searchParams]);
+  // An unrecognised ?render= value falls back to the configured default.
+  const renderMode = parseRenderMode(searchParams.get(RENDER_QUERY_PARAM)) ?? defaultRenderMode;
 
   const resolveScreen = useMemo(
     () =>
@@ -139,6 +163,7 @@ export function ScreenPage({ screensBaseUrl }: { screensBaseUrl: string }) {
                     macros={macros}
                     resolveScreen={resolveScreen}
                     resolveAsset={resolveAsset}
+                    renderMode={renderMode}
                   />
                 </div>
               </FormulaSubscriberContext.Provider>

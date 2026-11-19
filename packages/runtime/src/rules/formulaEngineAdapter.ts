@@ -6,10 +6,41 @@
 // is the minimal shape of its `subscribe`; the SDK class satisfies it (pinned
 // by the wiring test, which uses the real class as a dev dependency).
 
-import type { FormulaScalarValue, FormulaSpec, FormulaSubscriber } from '../formula.js';
+import type {
+  FormulaResultMeta,
+  FormulaScalarValue,
+  FormulaSeverity,
+  FormulaSpec,
+  FormulaSubscriber,
+} from '../formula.js';
 
 interface FormulaEngineScalarLike {
   value: FormulaScalarValue;
+  /** Wire severity (`NO_ALARM` | `MINOR` | `MAJOR` | `INVALID`). */
+  severity?: string;
+  /** Result timestamp, epoch ns. */
+  tsNs?: number;
+}
+
+const KNOWN_SEVERITIES: ReadonlySet<string> = new Set<FormulaSeverity>([
+  'NO_ALARM',
+  'MINOR',
+  'MAJOR',
+  'INVALID',
+]);
+
+function resultMeta(scalar: FormulaEngineScalarLike): FormulaResultMeta {
+  const meta: { severity?: FormulaSeverity; timestampMs?: number } = {};
+  if (scalar.severity !== undefined) {
+    // Like HarePVService: a severity the server grew later reads as INVALID.
+    meta.severity = KNOWN_SEVERITIES.has(scalar.severity)
+      ? (scalar.severity as FormulaSeverity)
+      : 'INVALID';
+  }
+  if (typeof scalar.tsNs === 'number' && scalar.tsNs > 0) {
+    meta.timestampMs = Math.floor(scalar.tsNs / 1e6);
+  }
+  return meta;
 }
 
 interface FormulaEngineResultLike {
@@ -36,8 +67,9 @@ export interface FormulaEngineServiceLike {
 /**
  * Wrap the SDK's Formula Engine service (or anything of its shape) as the
  * FormulaSubscriber the rule engine consumes. Scalar results feed
- * `onResult` with the bare value; non-scalar results are ignored (rules
- * target scalar widget properties); error frames map onto plain Errors.
+ * `onResult` with the bare value plus its severity/timestamp metadata;
+ * non-scalar results are ignored (rules and widget channels are scalar);
+ * error frames map onto plain Errors.
  */
 export function createFormulaEngineSubscriber(
   service: FormulaEngineServiceLike
@@ -47,7 +79,9 @@ export function createFormulaEngineSubscriber(
       return service.subscribe(spec, {
         ...(intervalMs !== undefined ? { intervalMs } : {}),
         onResult: (data) => {
-          if (data.kind === 'scalar' && data.scalar) onResult(data.scalar.value);
+          if (data.kind === 'scalar' && data.scalar) {
+            onResult(data.scalar.value, resultMeta(data.scalar));
+          }
         },
         onError: onError
           ? (error) => onError(new Error(`${error.code}: ${error.message}`))

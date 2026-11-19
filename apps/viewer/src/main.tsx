@@ -19,7 +19,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ServicesContext.Provider value={services}>
       <BrowserRouter>
-        <App screensBaseUrl={config.screensBaseUrl} />
+        <App screensBaseUrl={config.screensBaseUrl} defaultRenderMode={config.renderMode} />
       </BrowserRouter>
     </ServicesContext.Provider>
   </StrictMode>
